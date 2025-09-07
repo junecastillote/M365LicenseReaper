@@ -42,12 +42,13 @@ function Invoke-MLRUserLicenseRemoval {
         if ($readinessState.Action -eq 'Cancel') {
             $taskStatusPostOp = 'Cancelled'
             $taskResult = $($readinessState.ReadinessNote)
-            $completedDate = (Get-Date)
+            $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
 
         if ($readinessState.Action -eq 'Skip') {
             $taskStatusPostOp = 'Pending'
             $taskResult = $($readinessState.ReadinessNote)
+            $completedDate = $null
         }
 
         if ($readinessState.Action -eq 'Remove') {
@@ -58,7 +59,7 @@ function Invoke-MLRUserLicenseRemoval {
                 $taskStatusPostOp = 'Completed'
                 $taskResult = "License removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
                 $user.RemovedLicense = $readinessState.AssignedLicense
-                $completedDate = (Get-Date)
+                $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
             }
             else {
                 $taskStatusPostOp = $readinessState.TaskStatusPreOp
@@ -90,7 +91,7 @@ function Invoke-MLRUserLicenseRemoval {
 
             $user.TaskResult = $taskResult
             $user.TaskStatusPostOp = $taskStatusPostOp
-            $user.TaskCompletedDate = $completedDate
+            $user.TaskCompletedDate = $(if ($completedDate) { (Get-Date $completedDate) })
         }
         catch {
             SayError $_.Exception.Message
