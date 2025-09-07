@@ -34,7 +34,6 @@ function Invoke-MLRUserLicenseRemoval {
     foreach ($user in $usersForLicenseRemoval) {
         $taskStatusPostOp = ''
         $taskResult = ''
-        $listItemParam = ''
         $completedDate = $null
 
         $readinessState = Get-MLRUserAccountState -Username $user.TaskUsername
