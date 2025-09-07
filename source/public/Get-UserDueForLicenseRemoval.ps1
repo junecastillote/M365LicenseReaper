@@ -69,7 +69,7 @@ function Get-MLRUserDueForLicenseRemoval {
                                 TaskCreatedByUser      = $listItem.CreatedBy.User.DisplayName
                                 TaskCreatedByUserEmail = $listItem.CreatedBy.User.AdditionalProperties.email
                                 TaskCreated            = $fields.Created -as [datetime]
-                                TaskModified           = $fields.Modified -as [datetime]
+                                # TaskModified           = $fields.Modified -as [datetime]
                                 TaskCompletedDate      = $fields.CompleteDate
                                 TaskSiteUrl            = $SiteUrl
                                 TaskSiteId             = $siteId
