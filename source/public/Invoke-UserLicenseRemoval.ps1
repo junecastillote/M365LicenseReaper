@@ -23,10 +23,8 @@ function Invoke-MLRUserLicenseRemoval {
     )
 
     $usersForLicenseRemoval = Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -ListNameOrId $ListNameOrId
-    # $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AccountEnabled -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value @()
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskAction -Value ''
-    # $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name ReadinessNote -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusPostOp -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResult -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value @()
