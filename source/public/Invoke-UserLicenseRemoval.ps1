@@ -67,6 +67,13 @@ function Invoke-MLRUserLicenseRemoval {
         }
 
         try {
+            <#
+            - As of 2025-09-07, Update-MgSiteListItem and Update-MgSiteListItemField cannot update a DATE field to null value.
+            - Reference - https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/2724
+            - Microsoft closed the issue without it being resolved.
+            - As a workaround, used Invoke-MgGraphRequest to update the fields.
+            #>
+
             $fields = @{fields = @{
                     "Status"        = $taskStatusPostOp
                     "Notes"         = $taskResult
