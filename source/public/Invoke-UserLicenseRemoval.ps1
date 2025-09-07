@@ -31,12 +31,12 @@ function Invoke-MLRUserLicenseRemoval {
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResult -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value @()
 
-    $taskStatusPostOp = ''
-    $taskResult = ''
-    $listItemParam = ''
-    $completedDate = ''
-
     foreach ($user in $usersForLicenseRemoval) {
+        $taskStatusPostOp = ''
+        $taskResult = ''
+        $listItemParam = ''
+        $completedDate = $null
+
         $readinessState = Get-MLRUserAccountState -Username $user.TaskUsername
 
         $user.TaskAction = $readinessState.Action
@@ -45,6 +45,7 @@ function Invoke-MLRUserLicenseRemoval {
         if ($readinessState.Action -eq 'Cancel') {
             $taskStatusPostOp = 'Cancelled'
             $taskResult = $($readinessState.ReadinessNote)
+            $completedDate = (Get-Date)
         }
 
         if ($readinessState.Action -eq 'Skip') {
@@ -69,24 +70,30 @@ function Invoke-MLRUserLicenseRemoval {
         }
 
         try {
-
-
-            $listItemParam = @{
-                Status = $taskStatusPostOp
-                Notes  = $taskResult
+            $fields = @{fields = @{
+                    "Status"        = $taskStatusPostOp
+                    "Notes"         = $taskResult
+                    "CompletedDate" = $completedDate
+                }
             }
-            if ($completedDate) { $listItemParam.Add('CompletedDate', $completedDate) }
 
-            $null = Update-MgSiteListItemField -SiteId $user.TaskSiteId -ListId $user.TaskListId -ListItemId $user.TaskListItemId -BodyParameter $listItemParam -ErrorAction Stop
+            $null = Invoke-MgGraphRequest `
+                -Method PATCH `
+                -Uri "https://graph.microsoft.com/v1.0/sites/$($user.TaskSiteId)/lists/$($user.TaskListId)/items/$($user.TaskListItemId)" `
+                -Body $fields `
+                -ContentType "application/json" `
+                -ErrorAction Stop
+
             $user.TaskResult = $taskResult
             $user.TaskStatusPostOp = $taskStatusPostOp
             $user.TaskCompletedDate = $completedDate
         }
         catch {
-
+            SayError $_.Exception.Message
+            $user.TaskResult = $_.Exception.Message
+            $user.TaskStatusPostOp = $readinessState.TaskStatusPreOp
+            $user.TaskCompletedDate = $null
         }
-
-
     }
 
     $usersForLicenseRemoval
