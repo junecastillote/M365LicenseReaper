@@ -22,7 +22,7 @@ function Get-MLRUserAccountState {
         SayError "$($_.Exception.Message)"
         if ($_.Exception.Message -like "*does not exist*") {
             $action = 'Cancel'
-            $readinessNote = 'User account is not found.'
+            $readinessNote = 'User account is not found. This task will not be retried.'
         }
         else {
             $action = 'Skip'
