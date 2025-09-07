@@ -63,7 +63,8 @@ function Get-MLRUserDueForLicenseRemoval {
                     $(
                         [PSCustomObject]([ordered]@{
                                 TaskUsername           = $fields.Title
-                                TaskDueDate            = ($fields.DueDate -split "T")[0]
+                                # TaskDueDate            = ($fields.DueDate -split "T")[0]
+                                TaskDueDate            = (Get-Date $fields.DueDate)
                                 TaskStatusPreOp        = $fields.Status
                                 TaskCreatedByUser      = $listItem.CreatedBy.User.DisplayName
                                 TaskCreatedByUserEmail = $listItem.CreatedBy.User.AdditionalProperties.email
