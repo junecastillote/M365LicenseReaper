@@ -9,7 +9,7 @@ function Get-MLRUserDueForLicenseRemoval {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $ListNameOrId
+        $List
     )
 
     $today = (Get-Date)
@@ -34,11 +34,11 @@ function Get-MLRUserDueForLicenseRemoval {
 
     # Get SP Site list
     try {
-        $list = Get-MgSiteList -SiteId $siteId -ListId $listNameOrId -ErrorAction Stop
-        $listId = $list.Id
+        $splist = Get-MgSiteList -SiteId $siteId -ListId $List -ErrorAction Stop
+        $listId = $splist.Id
     }
     catch {
-        SayError "Error getting the list [$ListNameOrId]."
+        SayError "Error getting the list [$List]."
         SayError "  > Make sure that the list name or id is correct and that it exists."
         SayError "  > $($_.Exception.Message)"
         return $null
@@ -62,20 +62,19 @@ function Get-MLRUserDueForLicenseRemoval {
                 $result.Add(
                     $(
                         [PSCustomObject]([ordered]@{
-                                TaskUsername           = $fields.Title
-                                # TaskDueDate            = ($fields.DueDate -split "T")[0]
+                                TaskTicket             = $fields.Title
+                                TaskUsername           = $fields.Username
                                 TaskDueDate            = (Get-Date $fields.DueDate)
                                 TaskStatusPreOp        = $fields.Status
                                 TaskCreatedByUser      = $listItem.CreatedBy.User.DisplayName
                                 TaskCreatedByUserEmail = $listItem.CreatedBy.User.AdditionalProperties.email
                                 TaskCreated            = $fields.Created -as [datetime]
-                                # TaskModified           = $fields.Modified -as [datetime]
                                 TaskCompletedDate      = $fields.CompleteDate
                                 TaskSiteUrl            = $SiteUrl
                                 TaskSiteId             = $siteId
                                 TaskSiteName           = $site.Name
                                 TaskListId             = $listId
-                                TaskListName           = $list.Name
+                                TaskListName           = $splist.Name
                                 TaskListItemId         = $listItem.id
                             })
                     )
