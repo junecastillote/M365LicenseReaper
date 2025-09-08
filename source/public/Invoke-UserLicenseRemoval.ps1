@@ -9,7 +9,7 @@ function Invoke-MLRUserLicenseRemoval {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $ListNameOrId
+        $List
     )
 
     $tz = Get-TimeZone
@@ -22,7 +22,7 @@ function Invoke-MLRUserLicenseRemoval {
         }
     )
 
-    $usersForLicenseRemoval = Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -ListNameOrId $ListNameOrId
+    $usersForLicenseRemoval = Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value @()
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskAction -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusPostOp -Value ''
