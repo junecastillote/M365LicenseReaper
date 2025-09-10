@@ -63,7 +63,8 @@ function Get-MLRUserAccountState {
                 $readinessNote = "License removal not allowed - user account is currently enabled. This task will be retried."
             }
 
-            $assignedLicense = @($userLicenseCollection.SkuId)
+            # $assignedLicense = @($userLicenseCollection.SkuId)
+            $assignedLicense = $userLicenseCollection.SkuId -join ","
         }
 
         return $([PSCustomObject]([ordered]@{
@@ -79,7 +80,8 @@ function Get-MLRUserAccountState {
         return $([PSCustomObject]([ordered]@{
                     Username        = $Username
                     AccountEnabled  = ''
-                    AssignedLicense = @()
+                    # AssignedLicense = @()
+                    AssignedLicense = ''
                     Action          = 'Skip'
                     ReadinessNote   = "Cannot determine readiness because there was an error getting the user license details. $($_.Exception.Message). This task will be retried."
                 }))
