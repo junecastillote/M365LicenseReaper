@@ -32,7 +32,7 @@ function Get-MLRUserAccountState {
         return $([PSCustomObject]([ordered]@{
                     Username        = $Username
                     AccountEnabled  = ''
-                    AssignedLicense = @()
+                    AssignedLicense = ''
                     Action          = $action
                     ReadinessNote   = $readinessNote
                 }))
@@ -46,7 +46,7 @@ function Get-MLRUserAccountState {
         if (!$userLicenseCollection) {
             $action = 'Cancel'
             $readinessNote = "License removal cancelled - user accout is not licensed as of $($todayDateString). This task will not be retried."
-            $assignedLicense = @()
+            $assignedLicense = ''
         }
 
         # if with license
@@ -63,7 +63,6 @@ function Get-MLRUserAccountState {
                 $readinessNote = "License removal not allowed - user account is currently enabled. This task will be retried."
             }
 
-            # $assignedLicense = @($userLicenseCollection.SkuId)
             $assignedLicense = $userLicenseCollection.SkuId -join ","
         }
 
