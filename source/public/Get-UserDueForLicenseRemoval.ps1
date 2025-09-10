@@ -76,6 +76,7 @@ function Get-MLRUserDueForLicenseRemoval {
                                 TaskListId             = $listId
                                 TaskListName           = $splist.Name
                                 TaskListItemId         = $listItem.id
+                                # TaskLastMessage        = $fields.LastMessage
                             })
                     )
                 )
