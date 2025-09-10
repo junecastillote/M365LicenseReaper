@@ -9,8 +9,34 @@ function Invoke-MLRUserLicenseRemoval {
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
         [String]
-        $List
+        $List,
+
+        [Parameter()]
+        [hashtable]
+        $SendReportToEmailRecipient,
+
+        [Parameter()]
+        [string]
+        $SendReportToTeamsURL
     )
+
+    # If -SendReportToEmailRecipient is used, validate the email recipient table.
+    Write-Debug "Keys = $($PSBoundParameters.Keys -join ";")"
+    Write-Debug "SendReportToEmailRecipient present - $($PSBoundParameters.ContainsKey('SendReportToEmailRecipient'))"
+    if ($PSBoundParameters.ContainsKey('SendReportToEmailRecipient')) {
+        $emailRecipientTable = Test-RecipientTable $SendReportToEmailRecipient
+        if ($emailRecipientTable.IsValid -ne $true) {
+            $emailRecipientTable.Errors | ForEach-Object {
+                SayError "SendReportToEmailRecipient parameter validation failed."
+                SayError "  > $_"
+            }
+            return $null
+        }
+    }
+
+    if ($recipientTableIsValid) {
+        return $null
+    }
 
     $tz = Get-TimeZone
     $tzOffsetString = $(
@@ -22,7 +48,10 @@ function Invoke-MLRUserLicenseRemoval {
         }
     )
 
+    $dateNow = (Get-Date)
+
     $usersForLicenseRemoval = Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskRunDateTime -Value $dateNow
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value @()
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskAction -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusPostOp -Value ''
@@ -79,6 +108,7 @@ function Invoke-MLRUserLicenseRemoval {
                     "Status"        = $taskStatusPostOp
                     "Notes"         = $taskResult
                     "CompletedDate" = $completedDate
+                    "LastMessage"   = $taskResult
                 }
             }
 
