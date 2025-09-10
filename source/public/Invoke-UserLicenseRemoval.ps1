@@ -1,5 +1,5 @@
 function Invoke-MLRUserLicenseRemoval {
-    [CmdletBinding()]
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param (
         [Parameter(Mandatory)]
         [ValidateNotNullOrEmpty()]
@@ -17,12 +17,27 @@ function Invoke-MLRUserLicenseRemoval {
 
         [Parameter()]
         [string]
-        $SendReportToTeamsURL
+        $SendReportToTeamsURL,
+
+        [Parameter()]
+        [string]
+        $OutputFolder = "$($env:USERPROFILE)\M365LicenseReaper",
+
+        [Parameter()]
+        [int]
+        $MaxDaysToKeepFiles = 7
     )
 
-    # If -SendReportToEmailRecipient is used, validate the email recipient table.
     Write-Debug "Keys = $($PSBoundParameters.Keys -join ";")"
-    Write-Debug "SendReportToEmailRecipient present - $($PSBoundParameters.ContainsKey('SendReportToEmailRecipient'))"
+
+    # if ($Commit -eq $true) {
+    #     SayInfo "The script will run in COMMIT mode. Changes will be made to the user accounts and task list."
+    # }
+    # else {
+    #     SayInfo "The script will run in test mode since the -Commit switch is not used or it's value is set to `$false. No changes will be made to the user accounts and task list."
+    # }
+
+    # If -SendReportToEmailRecipient is used, validate the email recipient table.
     if ($PSBoundParameters.ContainsKey('SendReportToEmailRecipient')) {
         $emailRecipientTable = Test-RecipientTable $SendReportToEmailRecipient
         if ($emailRecipientTable.IsValid -ne $true) {
@@ -34,11 +49,10 @@ function Invoke-MLRUserLicenseRemoval {
         }
     }
 
-    if ($recipientTableIsValid) {
-        return $null
-    }
-
+    # Local time zone
     $tz = Get-TimeZone
+
+    # Get the offset string, ie. +08:00:00
     $tzOffsetString = $(
         if ($tz.BaseUtcOffset.ToString() -notlike "-*") {
             "UTC+$($tz.BaseUtcOffset.ToString())"
@@ -48,42 +62,68 @@ function Invoke-MLRUserLicenseRemoval {
         }
     )
 
+    # Current date
     $dateNow = (Get-Date)
 
+    # Create the output folder if it doesn't exist.
+    if (-not (Test-Path $OutputFolder)) {
+        try {
+            $null = New-Item -ItemType Directory -Path $OutputFolder -ErrorAction Stop
+        }
+        catch {
+            SayError "Failed to create the output directory [$($OutputFolder)]."
+            SayError "  > $($_.Exception.Message)"
+            return $null
+        }
+    }
+
+    $dateNowString = $datenow.ToString('yyyyMMddTHHmmss')
+    $csvFileName = "$OutputFolder\M365LicenseReaper_Raw_$($dateNowString).csv"
+    $htmlFileName = "$OutputFolder\M365LicenseReaper_Report_$($dateNowString).html"
+
+    SayInfo "Output file will be saved to $($OutputFolder)"
+
+    # Get the task list from the specified SharePoint Online site and list.
     $usersForLicenseRemoval = Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskRunDateTime -Value $dateNow
-    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value @()
+    # $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value @()
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskAction -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusPostOp -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResult -Value ''
-    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value @()
+    # $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value @()
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value ''
 
     foreach ($user in $usersForLicenseRemoval) {
+
+        # Initialize vars
         $taskStatusPostOp = ''
         $taskResult = ''
         $completedDate = $null
 
+        # Get the user account's readiness state for license removal
         $readinessState = Get-MLRUserAccountState -Username $user.TaskUsername
 
         $user.TaskAction = $readinessState.Action
         $user.AssignedLicense = $readinessState.AssignedLicense
 
+        # If readiness action state is 'Cancel'
         if ($readinessState.Action -eq 'Cancel') {
             $taskStatusPostOp = 'Cancelled'
             $taskResult = $($readinessState.ReadinessNote)
             $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
 
+        # If readiness action state is 'Skip'
         if ($readinessState.Action -eq 'Skip') {
             $taskStatusPostOp = 'Pending'
             $taskResult = $($readinessState.ReadinessNote)
             $completedDate = $null
         }
 
+        # If readiness action state is 'Remove'
         if ($readinessState.Action -eq 'Remove') {
-
-            $removeResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId $readinessState.AssignedLicense
-
+            $removeResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",")
             if ($removeResult -eq 'Successful') {
                 $taskStatusPostOp = 'Completed'
                 $taskResult = "License removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
@@ -104,7 +144,8 @@ function Invoke-MLRUserLicenseRemoval {
             - As a workaround, used Invoke-MgGraphRequest to update the fields.
             #>
 
-            $fields = @{fields = @{
+            $fields = @{
+                fields = @{
                     "Status"        = $taskStatusPostOp
                     "Notes"         = $taskResult
                     "CompletedDate" = $completedDate
@@ -129,6 +170,15 @@ function Invoke-MLRUserLicenseRemoval {
             $user.TaskStatusPostOp = $readinessState.TaskStatusPreOp
             $user.TaskCompletedDate = $null
         }
+    }
+
+    try {
+        $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
+        SayInfo "Raw data file saved to $($csvFileName)."
+    }
+    catch {
+        SayError "Failed to save the output file."
+        SayError "  > $($_.Exception.Message)"
     }
 
     $usersForLicenseRemoval
