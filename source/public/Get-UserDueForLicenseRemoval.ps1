@@ -36,6 +36,7 @@ function Get-MLRUserDueForLicenseRemoval {
     try {
         $splist = Get-MgSiteList -SiteId $siteId -ListId $List -ErrorAction Stop
         $listId = $splist.Id
+        $listUrl = $splist.WebUrl
     }
     catch {
         SayError "Error getting the list [$List]."
@@ -68,14 +69,16 @@ function Get-MLRUserDueForLicenseRemoval {
                                 TaskStatusPreOp        = $fields.Status
                                 TaskCreatedByUser      = $listItem.CreatedBy.User.DisplayName
                                 TaskCreatedByUserEmail = $listItem.CreatedBy.User.AdditionalProperties.email
-                                TaskCreated            = $fields.Created -as [datetime]
+                                TaskCreatedDate        = $fields.Created -as [datetime]
                                 TaskCompletedDate      = $fields.CompleteDate
                                 TaskSiteUrl            = $SiteUrl
                                 TaskSiteId             = $siteId
                                 TaskSiteName           = $site.Name
                                 TaskListId             = $listId
                                 TaskListName           = $splist.Name
+                                TaskListUrl            = $listUrl
                                 TaskListItemId         = $listItem.id
+                                TaskListItemURL        = "$($listUrl)/DispForm.aspx?ID=$($listItem.id)"
                                 # TaskLastMessage        = $fields.LastMessage
                             })
                     )

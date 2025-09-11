@@ -25,17 +25,14 @@ function Invoke-MLRUserLicenseRemoval {
 
         [Parameter()]
         [int]
-        $MaxDaysToKeepFiles = 7
+        $MaxDaysToKeepFiles = 7,
+
+        [parameter()]
+        [switch]
+        $ReturnResult
     )
 
     Write-Debug "Keys = $($PSBoundParameters.Keys -join ";")"
-
-    # if ($Commit -eq $true) {
-    #     SayInfo "The script will run in COMMIT mode. Changes will be made to the user accounts and task list."
-    # }
-    # else {
-    #     SayInfo "The script will run in test mode since the -Commit switch is not used or it's value is set to `$false. No changes will be made to the user accounts and task list."
-    # }
 
     # If -SendReportToEmailRecipient is used, validate the email recipient table.
     if ($PSBoundParameters.ContainsKey('SendReportToEmailRecipient')) {
@@ -84,7 +81,7 @@ function Invoke-MLRUserLicenseRemoval {
     SayInfo "Output file will be saved to $($OutputFolder)"
 
     # Get the task list from the specified SharePoint Online site and list.
-    $usersForLicenseRemoval = Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List
+    $usersForLicenseRemoval = @(Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List)
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskRunDateTime -Value $dateNow
     # $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value @()
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value ''
@@ -94,7 +91,11 @@ function Invoke-MLRUserLicenseRemoval {
     # $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value @()
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value ''
 
+    $counter = 1
+    $total = $usersForLicenseRemoval.Count
     foreach ($user in $usersForLicenseRemoval) {
+
+        SayInfo "Processing [$($counter)/$($total)] - Ticket: $($user.TaskTicket), Username: $($user.TaskUsername)"
 
         # Initialize vars
         $taskStatusPostOp = ''
@@ -109,7 +110,7 @@ function Invoke-MLRUserLicenseRemoval {
 
         # If readiness action state is 'Cancel'
         if ($readinessState.Action -eq 'Cancel') {
-            $taskStatusPostOp = 'Cancelled'
+            $taskStatusPostOp = 'Canceled'
             $taskResult = $($readinessState.ReadinessNote)
             $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
@@ -170,16 +171,31 @@ function Invoke-MLRUserLicenseRemoval {
             $user.TaskStatusPostOp = $readinessState.TaskStatusPreOp
             $user.TaskCompletedDate = $null
         }
+        $counter++
     }
 
     try {
-        $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
-        SayInfo "Raw data file saved to $($csvFileName)."
+        $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
+        SayInfo "CSV raw data file saved to $($csvFileName)."
     }
     catch {
-        SayError "Failed to save the output file."
+        SayError "Failed to save the CSV output file."
         SayError "  > $($_.Exception.Message)"
     }
 
-    $usersForLicenseRemoval
+    try {
+        Write-MLRHtmlReport -InputObject $usersForLicenseRemoval | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
+        # $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
+        SayInfo "HTML report file saved to $($htmlFileName)."
+    }
+    catch {
+        SayError "Failed to save the HTML output file."
+        SayError "  > $($_.Exception.Message)"
+    }
+
+    if ($emailRecipientTable.IsValid){
+        #TODO: Email
+    }
+
+    if ($ReturnResult) { $usersForLicenseRemoval }
 }

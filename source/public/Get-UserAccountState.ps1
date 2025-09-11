@@ -45,7 +45,7 @@ function Get-MLRUserAccountState {
         # If without license
         if (!$userLicenseCollection) {
             $action = 'Cancel'
-            $readinessNote = "License removal cancelled - user accout is not licensed as of $($todayDateString). This task will not be retried."
+            $readinessNote = "License removal canceled - user accout is not licensed as of $($todayDateString). This task will not be retried."
             $assignedLicense = ''
         }
 
