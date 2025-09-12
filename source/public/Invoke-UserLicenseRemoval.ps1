@@ -184,7 +184,8 @@ function Invoke-MLRUserLicenseRemoval {
     }
 
     try {
-        Write-MLRHtmlReport -InputObject $usersForLicenseRemoval | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
+        $htmlContent = Write-MLRHtmlReport -InputObject $usersForLicenseRemoval
+        $htmlContent | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
         # $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
         SayInfo "HTML report file saved to $($htmlFileName)."
     }
@@ -193,8 +194,60 @@ function Invoke-MLRUserLicenseRemoval {
         SayError "  > $($_.Exception.Message)"
     }
 
-    if ($emailRecipientTable.IsValid){
-        #TODO: Email
+    if ($emailRecipientTable.IsValid) {
+        $runDateTime = ($dateNow).ToString("MMMM dd, yyyy hh:mm tt [zzzz]")
+        $organizationName = (Get-MgOrganization).DisplayName
+        $subject = "[$($organizationName)] Microsoft 365 User License Reaper - $($runDateTime)"
+
+        $mailBody = @{
+            message = @{
+                subject                = $subject
+                body                   = @{
+                    content     = $htmlContent
+                    contentType = "HTML"
+                }
+                internetMessageHeaders = @(
+                    @{
+                        name  = "X-Mailer"
+                        value = "M365LicenseReaper by june.castillote@gmail.com"
+                    }
+                )
+            }
+        }
+
+        # To recipients
+        if ($SendReportToEmailRecipient.To) {
+            $mailBody.message += @{
+                toRecipients = @(
+                    $(Add-MLREmailRecipient $SendReportToEmailRecipient.To)
+                )
+            }
+        }
+
+        # Cc recipients
+        if ($SendReportToEmailRecipient.Cc) {
+            $mailBody.message += @{
+                ccRecipients = @(
+                    $(Add-MLREmailRecipient $SendReportToEmailRecipient.Cc)
+                )
+            }
+        }
+
+        # BCC recipients
+        if ($SendReportToEmailRecipient.Bcc) {
+            $mailBody.message += @{
+                bccRecipients = @(
+                    $(ConvertRecipientsToJSON $SendReportToEmailRecipient.Bcc)
+                )
+            }
+        }
+
+        try {
+            Send-MgUserMail -UserId $SendReportToEmailRecipient.From -BodyParameter $mailBody -ErrorAction Stop
+        }
+        catch {
+            SayError "Send email failed: $($_.Exception.Message)"
+        }
     }
 
     if ($ReturnResult) { $usersForLicenseRemoval }
