@@ -10,6 +10,14 @@ function Get-MLRUserAccountState {
     $todayDateString = $today.ToString('yyyy-MM-dd')
 
     try {
+        # Get M365 Product ID table
+        $skuTable = Get-MLRM365ProductIdTable -ErrorAction Stop
+    }
+    catch {
+        SayError "There was an error getting the Sku Table from Microsoft Learn. The license names will not be resolved to friendly names."
+    }
+
+    try {
         $properties = @(
             'UserPrincipalName',
             'AccountEnabled'
@@ -30,17 +38,20 @@ function Get-MLRUserAccountState {
         }
 
         return $([PSCustomObject]([ordered]@{
-                    Username        = $Username
-                    AccountEnabled  = ''
-                    AssignedLicense = ''
-                    Action          = $action
-                    ReadinessNote   = $readinessNote
+                    Username            = $Username
+                    AccountEnabled      = ''
+                    AssignedLicense     = ''
+                    AssignedLicenseName = ''
+                    Action              = $action
+                    ReadinessNote       = $readinessNote
                 }))
     }
 
     try {
         # Get user licenses
-        $userLicenseCollection = @(Get-MgUserLicenseDetail -UserId $Username -ErrorAction Stop | Select-Object SkuId)
+        # $userLicenseCollection = @(Get-MgUserLicenseDetail -UserId $Username -ErrorAction Stop | Select-Object SkuId)
+        # $userLicenseCollection = @(Get-MgUserLicenseDetail -UserId $Username -ErrorAction Stop | Select-Object SkuId, SkuPartNumber, SkuName)
+        $userLicenseCollection = @(Get-MgUserLicenseDetail -UserId $Username -ErrorAction Stop)
 
         # If without license
         if (!$userLicenseCollection) {
@@ -63,26 +74,45 @@ function Get-MLRUserAccountState {
                 $readinessNote = "License removal not allowed - user account is currently enabled. This task will be retried."
             }
 
+            # $assignedLicense = @()
+            $assignedLicenseName = @()
+            foreach ($license in $userLicenseCollection) {
+                if ($skuTable) {
+                    $skuName = ($skuTable | Where-Object { $_.SkuId -eq $license.SkuId }).SkuName
+                    if ($skuName) {
+                        $assignedLicenseName += $skuName
+                    }
+                    else {
+                        $assignedLicenseName += "$($license.SkuPartNumber)"
+                    }
+                }
+                else {
+                    $assignedLicenseName += "$($license.SkuPartNumber)"
+                }
+
+            }
             $assignedLicense = $userLicenseCollection.SkuId -join ","
+            $assignedLicenseName = $assignedLicenseName -join ","
         }
 
         return $([PSCustomObject]([ordered]@{
-                    Username        = $Username
-                    AccountEnabled  = $user.AccountEnabled
-                    AssignedLicense = $assignedLicense
-                    Action          = $action
-                    ReadinessNote   = $readinessNote
+                    Username            = $Username
+                    AccountEnabled      = $user.AccountEnabled
+                    AssignedLicense     = $assignedLicense
+                    AssignedLicenseName = $assignedLicenseName
+                    Action              = $action
+                    ReadinessNote       = $readinessNote
                 }))
     }
     catch {
         SayError "$($_.Exception.Message)"
         return $([PSCustomObject]([ordered]@{
-                    Username        = $Username
-                    AccountEnabled  = ''
-                    # AssignedLicense = @()
-                    AssignedLicense = ''
-                    Action          = 'Skip'
-                    ReadinessNote   = "Cannot determine readiness because there was an error getting the user license details. $($_.Exception.Message). This task will be retried."
+                    Username            = $Username
+                    AccountEnabled      = ''
+                    AssignedLicense     = ''
+                    AssignedLicenseName = ''
+                    Action              = 'Skip'
+                    ReadinessNote       = "Cannot determine readiness because there was an error getting the user license details. $($_.Exception.Message). This task will be retried."
                 }))
     }
 }

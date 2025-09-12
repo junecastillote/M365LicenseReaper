@@ -36,7 +36,7 @@ function Invoke-MLRUserLicenseRemoval {
 
     # If -SendReportToEmailRecipient is used, validate the email recipient table.
     if ($PSBoundParameters.ContainsKey('SendReportToEmailRecipient')) {
-        $emailRecipientTable = Test-RecipientTable $SendReportToEmailRecipient
+        $emailRecipientTable = Test-MLRRecipientTable $SendReportToEmailRecipient
         if ($emailRecipientTable.IsValid -ne $true) {
             $emailRecipientTable.Errors | ForEach-Object {
                 SayError "SendReportToEmailRecipient parameter validation failed."
@@ -83,13 +83,13 @@ function Invoke-MLRUserLicenseRemoval {
     # Get the task list from the specified SharePoint Online site and list.
     $usersForLicenseRemoval = @(Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List)
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskRunDateTime -Value $dateNow
-    # $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value @()
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicenseName -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskAction -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusPostOp -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResult -Value ''
-    # $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value @()
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicenseName -Value ''
 
     $counter = 1
     $total = $usersForLicenseRemoval.Count
@@ -107,6 +107,7 @@ function Invoke-MLRUserLicenseRemoval {
 
         $user.TaskAction = $readinessState.Action
         $user.AssignedLicense = $readinessState.AssignedLicense
+        $user.AssignedLicenseName = $readinessState.AssignedLicenseName
 
         # If readiness action state is 'Cancel'
         if ($readinessState.Action -eq 'Cancel') {
@@ -129,6 +130,7 @@ function Invoke-MLRUserLicenseRemoval {
                 $taskStatusPostOp = 'Completed'
                 $taskResult = "License removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
                 $user.RemovedLicense = $readinessState.AssignedLicense
+                $user.RemovedLicenseName = $readinessState.AssignedLicenseName
                 $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
             }
             else {
