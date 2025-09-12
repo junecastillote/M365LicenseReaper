@@ -127,7 +127,7 @@ function Write-MLRHtmlReport {
         $reportTitle = "$CustomTitle - $($runDateTime)"
     }
     else {
-        $reportTitle = "Microsoft 365 User License Reaper Report - $($runDateTime)"
+        $reportTitle = "Microsoft 365 User License Reaper - $($runDateTime)"
     }
 
     if ($CustomOrganization) {
@@ -156,7 +156,7 @@ function Write-MLRHtmlReport {
 
 
     $htmlContent = $htmlContent -replace "vTableRows", ($htmlRow -join "`n") -replace "vOrganization", $reportOrganization -replace "vReportTitle", $reportTitle
-    $htmlContent
+    ($htmlContent -join "`n")
 }
 
 function Add-MLREmailRecipient {
