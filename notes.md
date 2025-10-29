@@ -3,14 +3,16 @@
 ## Microsoft Graph API Requirements
 
 * Permissions:
-  * `LicenseAssignment.ReadWrite.All`
-  * `Directory.Read.All`
-  * `Mail.Send`
-  * `Sites.Selected`
+  * `LicenseAssignment.ReadWrite.All` - Modify / Remove user license assignment.
+  * `Directory.Read.All` - Read / resolve license Skus and Names.
+  * `Mail.Send` - Send email report.
+  * `Sites.Selected` - Read/Edit SharePoint Online List containing the ticket, username, and due date for the tasks.
     * This requires manually giving the registered app "`FullControl`" permission to the SharePoint Online site.
     * The script for adding this permission is at `helper\add-app-site-permission.ps1`.
 
 ## SharePoint Online List
+
+The SharePoint Online List to be used as the repository / item entry for users must have the following columns and settings.
 
 | Column Name    | Required | Type           | Unique Value | Indexed | Other Settings                            | Remarks                                                                                       |
 | -------------- | -------- | -------------- | ------------ | ------- | ----------------------------------------- | --------------------------------------------------------------------------------------------- |
