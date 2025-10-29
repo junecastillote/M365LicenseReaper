@@ -3,7 +3,11 @@ function Get-MLRUserAccountState {
     param (
         [Parameter(Mandatory)]
         [string]
-        $Username
+        $Username,
+
+        [Parameter()]
+        [bool]
+        $SkipIfEnabled = $false
     )
 
     $today = (Get-Date)
@@ -62,16 +66,24 @@ function Get-MLRUserAccountState {
 
         # if with license
         if ($userLicenseCollection) {
-            # with license + account disabled
-            if (!$user.AccountEnabled) {
-                $action = 'Remove'
-                $readinessNote = "License removal allowed - user account is disabled. This task is final."
-            }
+            # Control logic: Skip if the account is still enabled.
+            if ($SkipIfEnabled -eq $true) {
+                # with license + account enabled (skip)
+                if ($user.AccountEnabled) {
+                    $action = 'Skip'
+                    $readinessNote = "License removal not allowed - user account is currently enabled. This task will be retried."
+                }
 
-            # with license + account enabled (skip)
-            if ($user.AccountEnabled) {
-                $action = 'Skip'
-                $readinessNote = "License removal not allowed - user account is currently enabled. This task will be retried."
+                # with license + account disabled
+                if (!$user.AccountEnabled) {
+                    $action = 'Remove'
+                    $readinessNote = "License removal allowed - user account is disabled. This task is final."
+                }
+            }
+            # Control logic: Remove, as long as the user is licensed. Ignore whether account is still enabled.
+            else {
+                $action = 'Remove'
+                $readinessNote = "License removal allowed. This task is final."
             }
 
             # $assignedLicense = @()

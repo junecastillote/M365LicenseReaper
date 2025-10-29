@@ -29,7 +29,11 @@ function Invoke-MLRUserLicenseRemoval {
 
         [parameter()]
         [switch]
-        $ReturnResult
+        $ReturnResult,
+
+        [Parameter()]
+        [bool]
+        $SkipIfEnabled = $false
     )
 
     Write-Debug "Keys = $($PSBoundParameters.Keys -join ";")"
@@ -103,7 +107,7 @@ function Invoke-MLRUserLicenseRemoval {
         $completedDate = $null
 
         # Get the user account's readiness state for license removal
-        $readinessState = Get-MLRUserAccountState -Username $user.TaskUsername
+        $readinessState = Get-MLRUserAccountState -Username $user.TaskUsername -SkipIfEnabled:$SkipIfEnabled
 
         $user.TaskAction = $readinessState.Action
         $user.AssignedLicense = $readinessState.AssignedLicense
