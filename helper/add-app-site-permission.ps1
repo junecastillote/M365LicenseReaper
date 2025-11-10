@@ -70,7 +70,6 @@ $requestBody = [ordered]@{
 
 # Add the app's permission to the site.
 try {
-  # $appPerm = New-MgSitePermission -SiteId $siteId -BodyParameter $jsonBody -ErrorAction Stop
   $appPerm = New-MgSitePermission -SiteId $siteId -BodyParameter ($requestBody | ConvertTo-Json -Depth 3) -ErrorAction Stop
   [PSCustomObject]([ordered]@{
       SitePermissionId = $appPerm.Id
