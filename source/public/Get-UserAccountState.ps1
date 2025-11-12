@@ -6,8 +6,8 @@ function Get-MLRUserAccountState {
         $Username,
 
         [Parameter()]
-        [bool]
-        $SkipIfEnabled = $false
+        [switch]
+        $SkipIfEnabled
     )
 
     $today = (Get-Date)
@@ -53,8 +53,6 @@ function Get-MLRUserAccountState {
 
     try {
         # Get user licenses
-        # $userLicenseCollection = @(Get-MgUserLicenseDetail -UserId $Username -ErrorAction Stop | Select-Object SkuId)
-        # $userLicenseCollection = @(Get-MgUserLicenseDetail -UserId $Username -ErrorAction Stop | Select-Object SkuId, SkuPartNumber, SkuName)
         $userLicenseCollection = @(Get-MgUserLicenseDetail -UserId $Username -ErrorAction Stop)
 
         # If without license

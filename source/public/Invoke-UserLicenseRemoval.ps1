@@ -32,8 +32,8 @@ function Invoke-MLRUserLicenseRemoval {
         $ReturnResult,
 
         [Parameter()]
-        [bool]
-        $SkipIfEnabled = $false
+        [switch]
+        $SkipIfEnabled
     )
 
     Write-Debug "Keys = $($PSBoundParameters.Keys -join ";")"
