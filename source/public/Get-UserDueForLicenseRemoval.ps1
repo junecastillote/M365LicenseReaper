@@ -85,9 +85,6 @@ function Get-MLRUserDueForLicenseRemoval {
                 )
             }
         }
-        # $visible_properties = [string[]]@('TaskTicket', 'TaskUsername', 'TaskDueDate')
-        # [Management.Automation.PSMemberInfo[]]$default_properties = [System.Management.Automation.PSPropertySet]::new('DefaultDisplayPropertySet', $visible_properties)
-        # $result | Add-Member -MemberType MemberSet -Name PSStandardMembers -Value $default_properties
         return $result
     }
     catch {
