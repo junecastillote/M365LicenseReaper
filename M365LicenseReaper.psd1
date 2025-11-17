@@ -9,31 +9,31 @@
 @{
 
     # Script module or binary module file associated with this manifest.
-    RootModule        = 'M365LicenseReaper.psm1'
+    RootModule           = 'M365LicenseReaper.psm1'
 
     # Version number of this module.
-    ModuleVersion     = '0.1.0'
+    ModuleVersion        = '0.1.0'
 
     # Supported PSEditions
-    # CompatiblePSEditions = @()
+    CompatiblePSEditions = @('Desk', 'Core')
 
     # ID used to uniquely identify this module
-    GUID              = 'e2992127-78a2-47ec-8a04-88613c7f0c04'
+    GUID                 = 'e2992127-78a2-47ec-8a04-88613c7f0c04'
 
     # Author of this module
-    Author            = 'June Castillote'
+    Author               = 'June Castillote'
 
     # Company or vendor of this module
-    CompanyName       = 'Unknown'
+    CompanyName          = 'Unknown'
 
     # Copyright statement for this module
-    Copyright         = '(c) June Castillote. All rights reserved.'
+    Copyright            = '(c) June Castillote. All rights reserved.'
 
     # Description of the functionality provided by this module
-    Description       = 'The M365LicenseReaper PowerShell module automates the removal of Microsoft 365 licenses based on due dates stored in a SharePoint Online list. It reads user entries with scheduled license removal dates, updates their license assignments accordingly, and helps organizations streamline offboarding, cost management, and license lifecycle compliance.'
+    Description          = 'The M365LicenseReaper PowerShell module automates the removal of Microsoft 365 licenses based on due dates stored in a SharePoint Online list. It reads user entries with scheduled license removal dates, updates their license assignments accordingly, and helps organizations streamline offboarding, cost management, and license lifecycle compliance.'
 
     # Minimum version of the PowerShell engine required by this module
-    # PowerShellVersion = ''
+    PowerShellVersion    = '5.1'
 
     # Name of the PowerShell host required by this module
     # PowerShellHostName = ''
@@ -51,7 +51,7 @@
     # ProcessorArchitecture = ''
 
     # Modules that must be imported into the global environment prior to importing this module
-    RequiredModules   = @(
+    RequiredModules      = @(
         'Microsoft.Graph.Authentication', 'Microsoft.Graph.Identity.DirectoryManagement', 'Microsoft.Graph.Sites', 'Microsoft.Graph.Users', 'Microsoft.Graph.Users.Actions'
     )
 
@@ -71,7 +71,7 @@
     # NestedModules = @()
 
     # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-    FunctionsToExport = @(
+    FunctionsToExport    = @(
         'Get-MLRUserDueForLicenseRemoval',
         'Remove-MLRUserLicenseAssignment',
         'Invoke-MLRUserLicenseRemoval',
@@ -79,13 +79,13 @@
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-    CmdletsToExport   = '*'
+    CmdletsToExport      = '*'
 
     # Variables to export from this module
-    VariablesToExport = '*'
+    VariablesToExport    = '*'
 
     # Aliases to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no aliases to export.
-    AliasesToExport   = '*'
+    AliasesToExport      = '*'
 
     # DSC resources to export from this module
     # DscResourcesToExport = @()
@@ -97,15 +97,15 @@
     # FileList = @()
 
     # Private data to pass to the module specified in RootModule/ModuleToProcess. This may also contain a PSData hashtable with additional module metadata used by PowerShell.
-    PrivateData       = @{
+    PrivateData          = @{
 
         PSData = @{
 
             # Tags applied to this module. These help with module discovery in online galleries.
-            # Tags = @()
+            Tags       = @('License', 'M365', 'Remove', 'Product')
 
             # A URL to the license for this module.
-            # LicenseUri = ''
+            LicenseUri = 'https://github.com/junecastillote/M365LicenseReaper/blob/main/LICENSE'
 
             # A URL to the main website for this project.
             ProjectUri = 'https://github.com/junecastillote/M365LicenseReaper'
