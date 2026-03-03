@@ -37,6 +37,8 @@ function Get-MLRUserDueForLicenseRemoval {
         $splist = Get-MgSiteList -SiteId $siteId -ListId $List -ErrorAction Stop
         $listId = $splist.Id
         $listUrl = $splist.WebUrl
+        $listColumns = Get-MgSiteListColumn -SiteId $siteId -ListId $listId -ErrorAction Stop
+        $dueDateColumnName = ($listColumns | Where-Object { $_.DisplayName -eq 'Due Date' }).Name
     }
     catch {
         SayError "Error getting the list [$List]."
@@ -56,7 +58,7 @@ function Get-MLRUserDueForLicenseRemoval {
             AND
             fields/DueDate < or = Date Today in UTC
         #>
-        $listItemCollection = @(Get-MgSiteListItem -SiteId $siteId -ListId $listId -ExpandProperty "fields" -Filter "fields/Status eq 'Pending' and fields/DueDate le '$($todayUTCDateString)'" -ErrorAction Stop)
+        $listItemCollection = @(Get-MgSiteListItem -SiteId $siteId -ListId $listId -ExpandProperty "fields" -Filter "fields/Status eq 'Pending' and fields/$($dueDateColumnName) le '$($todayUTCDateString)'" -ErrorAction Stop)
         if ($listItemCollection) {
             foreach ($listItem in $listItemCollection) {
                 $fields = New-Object psobject -Property $listItem.fields.additionalProperties
@@ -65,7 +67,7 @@ function Get-MLRUserDueForLicenseRemoval {
                         [PSCustomObject]([ordered]@{
                                 TaskTicket             = $fields.Title
                                 TaskUsername           = $fields.Username
-                                TaskDueDate            = (Get-Date $fields.DueDate)
+                                TaskDueDate            = (Get-Date $fields."$($dueDateColumnName)")
                                 TaskStatusPreOp        = $fields.Status
                                 TaskCreatedByUser      = $listItem.CreatedBy.User.DisplayName
                                 TaskCreatedByUserEmail = $listItem.CreatedBy.User.AdditionalProperties.email
