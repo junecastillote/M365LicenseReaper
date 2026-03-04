@@ -12,7 +12,7 @@
     RootModule           = 'M365LicenseReaper.psm1'
 
     # Version number of this module.
-    ModuleVersion        = '0.1.0'
+    ModuleVersion        = '0.3.0'
 
     # Supported PSEditions
     CompatiblePSEditions = @('Desk', 'Core')
