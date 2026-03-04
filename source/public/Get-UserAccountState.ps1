@@ -64,8 +64,8 @@ function Get-MLRUserAccountState {
         }
 
         return $([PSCustomObject]([ordered]@{
-                    Id                   = $user.Id
                     Username             = $Username
+                    UserId               = ''
                     AccountEnabled       = ''
                     AssignedLicense      = ''
                     AssignedLicenseName  = ''
@@ -80,7 +80,6 @@ function Get-MLRUserAccountState {
 
     try {
         # Get user licenses
-        # $userLicenseCollection = @(Get-MgUserLicenseDetail -UserId $Username -ErrorAction Stop)
         $userLicenseCollection = $user.LicenseAssignmentStates
 
         if ($userLicenseCollection) {
@@ -196,8 +195,8 @@ function Get-MLRUserAccountState {
         }
 
         return $([PSCustomObject]([ordered]@{
-                    Id                   = $user.Id
                     Username             = $Username
+                    UserId               = ''
                     AccountEnabled       = $user.AccountEnabled
                     AssignedLicense      = $assignedLicense
                     AssignedLicenseName  = $assignedLicenseName
@@ -212,8 +211,8 @@ function Get-MLRUserAccountState {
     catch {
         SayError "$($_.Exception.Message)"
         return $([PSCustomObject]([ordered]@{
-                    Id                   = ''
                     Username             = $Username
+                    UserId               = ''
                     AccountEnabled       = ''
                     AssignedLicense      = ''
                     AssignedLicenseName  = ''
