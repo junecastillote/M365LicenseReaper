@@ -196,7 +196,7 @@ function Get-MLRUserAccountState {
 
         return $([PSCustomObject]([ordered]@{
                     Username             = $Username
-                    UserId               = ''
+                    UserId               = $user.Id
                     AccountEnabled       = $user.AccountEnabled
                     AssignedLicense      = $assignedLicense
                     AssignedLicenseName  = $assignedLicenseName
