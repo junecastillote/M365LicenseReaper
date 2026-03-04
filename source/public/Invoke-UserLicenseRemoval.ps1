@@ -43,8 +43,8 @@ function Invoke-MLRUserLicenseRemoval {
         $emailRecipientTable = Test-MLRRecipientTable $SendReportToEmailRecipient
         if ($emailRecipientTable.IsValid -ne $true) {
             $emailRecipientTable.Errors | ForEach-Object {
-                SayError "SendReportToEmailRecipient parameter validation failed."
-                SayError "  > $_"
+                SayError "[$($MyInvocation.MyCommand.Name)]: SendReportToEmailRecipient parameter validation failed."
+                SayError "[$($MyInvocation.MyCommand.Name)]:   > $_"
             }
             return $null
         }
@@ -72,8 +72,8 @@ function Invoke-MLRUserLicenseRemoval {
             $null = New-Item -ItemType Directory -Path $OutputFolder -ErrorAction Stop
         }
         catch {
-            SayError "Failed to create the output directory [$($OutputFolder)]."
-            SayError "  > $($_.Exception.Message)"
+            SayError "[$($MyInvocation.MyCommand.Name)]: Failed to create the output directory [$($OutputFolder)]."
+            SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
             return $null
         }
     }
@@ -94,6 +94,9 @@ function Invoke-MLRUserLicenseRemoval {
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResult -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicenseName -Value ''
+
+    $lastMessageColumnName = ($Global:mlrTaskList.Columns.Columns | Where-Object { $_.DisplayName -eq 'Last Message' }).InternalName
+    $completedDateColumnName = ($Global:mlrTaskList.Columns.Columns | Where-Object { $_.DisplayName -eq 'Completed Date' }).InternalName
 
     $counter = 1
     $total = $usersForLicenseRemoval.Count
@@ -153,10 +156,10 @@ function Invoke-MLRUserLicenseRemoval {
 
             $fields = @{
                 fields = @{
-                    "Status"        = $taskStatusPostOp
-                    "Notes"         = $taskResult
-                    "CompletedDate" = $completedDate
-                    "LastMessage"   = $taskResult
+                    "Status"                      = $taskStatusPostOp
+                    "Notes"                       = $taskResult
+                    "$($completedDateColumnName)" = $completedDate
+                    "$($lastMessageColumnName)"   = $taskResult
                 }
             }
 
@@ -186,8 +189,8 @@ function Invoke-MLRUserLicenseRemoval {
         SayInfo "CSV raw data file saved to $($csvFileName)."
     }
     catch {
-        SayError "Failed to save the CSV output file."
-        SayError "  > $($_.Exception.Message)"
+        SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the CSV output file."
+        SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
     }
 
     try {
@@ -197,8 +200,8 @@ function Invoke-MLRUserLicenseRemoval {
         SayInfo "HTML report file saved to $($htmlFileName)."
     }
     catch {
-        SayError "Failed to save the HTML output file."
-        SayError "  > $($_.Exception.Message)"
+        SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the HTML output file."
+        SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
     }
 
     if ($emailRecipientTable.IsValid) {
@@ -253,7 +256,7 @@ function Invoke-MLRUserLicenseRemoval {
             Send-MgUserMail -UserId $SendReportToEmailRecipient.From -BodyParameter $mailBody -ErrorAction Stop
         }
         catch {
-            SayError "Send email failed: $($_.Exception.Message)"
+            SayError "[$($MyInvocation.MyCommand.Name)]: Send email failed: $($_.Exception.Message)"
         }
     }
 

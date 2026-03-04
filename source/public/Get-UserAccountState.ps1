@@ -37,7 +37,7 @@ function Get-MLRUserAccountState {
         $skuTable = Get-MLRM365ProductIdTable -ErrorAction Stop
     }
     catch {
-        SayError "There was an error getting the Sku Table from Microsoft Learn. The license names will not be resolved to friendly names."
+        SayError "[$($MyInvocation.MyCommand.Name)]: There was an error getting the Sku Table from Microsoft Learn. The license names will not be resolved to friendly names."
     }
 
     try {
@@ -53,7 +53,7 @@ function Get-MLRUserAccountState {
         $user = Get-MgUser -UserId $Username -ErrorAction Stop -Property $properties | Select-Object $properties
     }
     catch {
-        SayError "$($_.Exception.Message)"
+        SayError "[$($MyInvocation.MyCommand.Name)]: $($_.Exception.Message)"
         if ($_.Exception.Message -like "*does not exist*") {
             $action = 'Cancel'
             $readinessNote = 'User account is not found. This task will not be retried.'
@@ -209,7 +209,7 @@ function Get-MLRUserAccountState {
                 }))
     }
     catch {
-        SayError "$($_.Exception.Message)"
+        SayError "[$($MyInvocation.MyCommand.Name)]: $($_.Exception.Message)"
         return $([PSCustomObject]([ordered]@{
                     Username             = $Username
                     UserId               = ''
