@@ -40,44 +40,46 @@ function Get-MLRM365ProductIdTable {
     function ShowResult {
         $visible_properties = [string[]]@('SkuName', 'SkuPartNumber', 'SkuId')
         [Management.Automation.PSMemberInfo[]]$default_properties = [System.Management.Automation.PSPropertySet]::new('DefaultDisplayPropertySet', $visible_properties )
-        $Global:SkuTable | Add-Member -MemberType MemberSet -Name PSStandardMembers -Value $default_properties -Force
+        $Global:mlrSkuTable | Add-Member -MemberType MemberSet -Name PSStandardMembers -Value $default_properties -Force
 
         switch ($PSCmdlet.ParameterSetName) {
             # -SkuId <GUID>
             SkuId {
                 Write-Verbose "Filtering by SkuId"
                 foreach ($id in $SkuId) {
-                    $Global:SkuTable | Where-Object { $_.SkuId -eq $id }
+                    $Global:mlrSkuTable | Where-Object { $_.SkuId -eq $id }
                 }
             }
             # -SkuPartNumber <SKU PART NUMBER>
             SkuPartNumber {
                 Write-Verbose "Filtering by SkuPartNumber"
                 foreach ($partNumber in $SkuPartNumber) {
-                    $Global:SkuTable | Where-Object { $_.SkuPartNumber -eq $partNumber }
+                    $Global:mlrSkuTable | Where-Object { $_.SkuPartNumber -eq $partNumber }
                 }
             }
             default {
                 Write-Verbose "No filtering. Showing all results."
-                $Global:SkuTable
+                $Global:mlrSkuTable
             }
         }
     }
 
     $ErrorActionPreference = 'STOP'
 
-    if ($ForceOnline) { $Global:SkuTable = @() }
+    if ($ForceOnline) { $Global:mlrSkuTable = @() }
 
     #https://learn.microsoft.com/en-us/entra/identity/users/licensing-service-plan-reference
 
     # Check first if the SKU table is already available in the session. This ensures that the script only downloads the online table once per session, unless the -ForceOnline switch is used.
-    if ($Global:SkuTable) {
-        Write-Verbose "SKU table exists in session."
+    if ($Global:mlrSkuTable) {
+        Write-Verbose "SKU table exists in session..."
+        Write-Debug "SKU table exists in session..."
         return ShowResult
     }
 
     # Continue if the SKU table is not yet in the session
     Write-Verbose "Downloading SKU table online..."
+    Write-Debug "Downloading SKU table online..."
 
     ## Parse the Markdown Table from the $URL
     try {
@@ -121,6 +123,7 @@ function Get-MLRM365ProductIdTable {
     if (-not $PSBoundParameters.ContainsKey('TitleCase')) {
         $TitleCase = $true
         Write-Verbose "TitleCase name conversion enabled"
+        Write-Verbose "TitleCase name conversion enabled"
     }
 
     ## Create the result object
@@ -128,7 +131,7 @@ function Get-MLRM365ProductIdTable {
 
     # Set "," (comma) as the default delimiter character for ChildServicePlan and ChildServicePlanName
     if (-not $ListDelimiterCharacter) { $ListDelimiterCharacter = "," }
-    $Global:SkuTable = @($result | ConvertFrom-Csv -Delimiter "|" -Header 'SkuName', 'SkuPartNumber', 'SkuID', 'ChildServicePlan', 'ChildServicePlanName' | ForEach-Object {
+    $Global:mlrSkuTable = @($result | ConvertFrom-Csv -Delimiter "|" -Header 'SkuName', 'SkuPartNumber', 'SkuID', 'ChildServicePlan', 'ChildServicePlanName' | ForEach-Object {
 
 
             if ($ListDelimiterCharacter -ne ",") {
