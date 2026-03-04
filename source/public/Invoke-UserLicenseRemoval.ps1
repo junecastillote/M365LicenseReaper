@@ -247,7 +247,7 @@ function Invoke-MLRUserLicenseRemoval {
         if ($SendReportToEmailRecipient.Bcc) {
             $mailBody.message += @{
                 bccRecipients = @(
-                    $(ConvertRecipientsToJSON $SendReportToEmailRecipient.Bcc)
+                    $(Add-MLREmailRecipient $SendReportToEmailRecipient.Bcc)
                 )
             }
         }
