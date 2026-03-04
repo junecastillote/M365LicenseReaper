@@ -160,6 +160,7 @@ function Invoke-MLRUserLicenseRemoval {
                 }
             }
 
+            Write-Debug "Updating SPO List item for $($user.TaskUsername)"
             $null = Invoke-MgGraphRequest `
                 -Method PATCH `
                 -Uri "https://graph.microsoft.com/v1.0/sites/$($user.TaskSiteId)/lists/$($user.TaskListId)/items/$($user.TaskListItemId)" `
