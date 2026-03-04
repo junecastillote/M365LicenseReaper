@@ -17,7 +17,8 @@ function Get-MLRUserAccountState {
 
     if (-not $Global:mlrGroupCache) {
         Write-Debug "Creating group cache in session..."
-        $Global:mlrGroupCache = @{}
+        # $Global:mlrGroupCache = @{}
+        $Global:mlrGroupCache = @()
     }
     else {
         Write-Debug "Group cache exists in session..."
@@ -95,10 +96,14 @@ function Get-MLRUserAccountState {
         # Update the group cache
         if ($licenseGroupIds) {
             foreach ($id in $licenseGroupIds) {
-                if (-not ($groupName = $Global:mlrGroupCache[$id])) {
+                if (-not ($groupName = ($Global:mlrGroupCache | Where-Object { $_.ID -eq $id }).DisplayName)) {
                     Write-Debug "Group [$($id)] not found in cache. Retrieving group online."
-                    $group = Get-MgGroup -GroupId $id -Property Id, DisplayName
-                    $Global:mlrGroupCache.Add($group.Id, $group.DisplayName)
+                    $group = Get-MgGroup -GroupId $id -Property Id, DisplayName, GroupTypes
+                    $Global:mlrGroupCache += [pscustomobject]@{
+                        Id          = $group.Id
+                        DisplayName = $group.DisplayName
+                        GroupTypes  = $group.GroupTypes
+                    }
                 }
                 else {
                     Write-Debug "Group [$($groupName) ($($id))] found in cache."
