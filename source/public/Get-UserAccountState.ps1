@@ -17,7 +17,6 @@ function Get-MLRUserAccountState {
 
     if (-not $Global:mlrGroupCache) {
         Write-Debug "Creating group cache in session..."
-        # $Global:mlrGroupCache = @{}
         $Global:mlrGroupCache = @()
     }
     else {
@@ -104,6 +103,7 @@ function Get-MLRUserAccountState {
                         DisplayName = $group.DisplayName
                         GroupTypes  = $group.GroupTypes
                     }
+                    $groupName = $group.DisplayName
                 }
                 else {
                     Write-Debug "Group [$($groupName) ($($id))] found in cache."
