@@ -16,7 +16,7 @@ function Get-MLRUserDueForLicenseRemoval {
     $todayUTC = $today.ToUniversalTime()
     $todayUTCDateString = $todayUTC.ToString('yyyy-MM-dd')
 
-    $Global:mlrTaskList = Test-MLRTaskSite -SiteUrl $SiteUrl -List $List
+    $Global:mlrTaskList = Test-MLRTaskList -SiteUrl $SiteUrl -List $List
 
     if ($Global:mlrTaskList.Status -ne 'Passed') {
         SayError "[$($MyInvocation.MyCommand.Name)]: SharePoint Site, List, Columns validation failed."
