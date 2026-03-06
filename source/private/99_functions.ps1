@@ -54,4 +54,19 @@ function ThisModule {
     $MyInvocation.MyCommand.Module
 }
 
+function IsMLRGraphConnected {
+    param()
+    if (-not (Get-Module Microsoft.Graph.Authentication)) {
+        SayError "[$($MyInvocation.MyCommand.Name)]: Microsoft Graph is not connected."
+        return $false
+    }
+
+    if (-not (Get-MgContext)) {
+        SayError "[$($MyInvocation.MyCommand.Name)]: Microsoft Graph is not connected."
+        return $false
+    }
+
+    return $true
+}
+
 
