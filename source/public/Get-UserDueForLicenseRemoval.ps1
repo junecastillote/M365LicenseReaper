@@ -26,7 +26,7 @@ function Get-MLRUserDueForLicenseRemoval {
     else {
         $site = $Global:mlrTaskList.Site
         $siteId = $Global:mlrTaskList.Site.id
-        $list = $Global:mlrTaskList.List
+        $spList = $Global:mlrTaskList.List
         $listId = $Global:mlrTaskList.List.Id
         $listUrl = $Global:mlrTaskList.List.WebUrl
         $listColumns = $Global:mlrTaskList.Columns.Columns
@@ -63,7 +63,7 @@ function Get-MLRUserDueForLicenseRemoval {
                                 TaskSiteId             = $siteId
                                 TaskSiteName           = $site.Name
                                 TaskListId             = $listId
-                                TaskListName           = $splist.Name
+                                TaskListName           = $spList.Name
                                 TaskListUrl            = $listUrl
                                 TaskListItemId         = $listItem.id
                                 TaskListItemURL        = "$($listUrl)/DispForm.aspx?ID=$($listItem.id)"
@@ -76,7 +76,7 @@ function Get-MLRUserDueForLicenseRemoval {
         return $result
     }
     catch {
-        SayError "[$($MyInvocation.MyCommand.Name)]: Error getting the items from the list [$($list.DisplayName)]."
+        SayError "[$($MyInvocation.MyCommand.Name)]: Error getting the items from the list [$($spList.DisplayName)]."
         SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
         return $null
     }
