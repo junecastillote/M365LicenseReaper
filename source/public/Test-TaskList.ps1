@@ -74,7 +74,7 @@ function Test-MLRTaskList {
     else {
         $schemaTest.Columns | Where-Object { $_.Status -ne 'OK' } | ForEach-Object {
             $issues += $(
-                "Column Check: [$($_.Column)] $($_.Details)"
+                "Column Check: [$($_.DisplayName)] $($_.Details)"
             )
         }
         $result.Issues += $issues
