@@ -82,10 +82,16 @@ function Invoke-MLRUserLicenseRemoval {
     $csvFileName = "$OutputFolder\M365LicenseReaper_Raw_$($dateNowString).csv"
     $htmlFileName = "$OutputFolder\M365LicenseReaper_Report_$($dateNowString).html"
 
-    SayInfo "Output file will be saved to $($OutputFolder)"
+    SayInfo "[$($MyInvocation.MyCommand.Name)]: Output file will be saved to $($OutputFolder)"
 
     # Get the task list from the specified SharePoint Online site and list.
     $usersForLicenseRemoval = @(Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List)
+
+    if (-not $usersForLicenseRemoval) {
+        SayInfo "[$($MyInvocation.MyCommand.Name)]: There are no users due for license removal."
+        return $null
+    }
+
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskRunDateTime -Value $dateNow
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicenseName -Value ''
@@ -102,7 +108,7 @@ function Invoke-MLRUserLicenseRemoval {
     $total = $usersForLicenseRemoval.Count
     foreach ($user in $usersForLicenseRemoval) {
 
-        SayInfo "Processing [$($counter)/$($total)] - Ticket: $($user.TaskTicket), Username: $($user.TaskUsername)"
+        SayInfo "[$($MyInvocation.MyCommand.Name)]: Processing [$($counter)/$($total)] - Ticket: $($user.TaskTicket), Username: $($user.TaskUsername)"
 
         # Initialize vars
         $taskStatusPostOp = ''
@@ -186,7 +192,7 @@ function Invoke-MLRUserLicenseRemoval {
 
     try {
         $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
-        SayInfo "CSV raw data file saved to $($csvFileName)."
+        SayInfo "[$($MyInvocation.MyCommand.Name)]: CSV raw data file saved to $($csvFileName)."
     }
     catch {
         SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the CSV output file."
@@ -197,7 +203,7 @@ function Invoke-MLRUserLicenseRemoval {
         $htmlContent = Write-MLRHtmlReport -InputObject $usersForLicenseRemoval
         $htmlContent | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
         # $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
-        SayInfo "HTML report file saved to $($htmlFileName)."
+        SayInfo "[$($MyInvocation.MyCommand.Name)]: HTML report file saved to $($htmlFileName)."
     }
     catch {
         SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the HTML output file."
