@@ -43,8 +43,8 @@ function Invoke-MLRUserLicenseRemoval {
         $emailRecipientTable = Test-MLRRecipientTable $SendReportToEmailRecipient
         if ($emailRecipientTable.IsValid -ne $true) {
             $emailRecipientTable.Errors | ForEach-Object {
-                SayError "SendReportToEmailRecipient parameter validation failed."
-                SayError "  > $_"
+                SayError "[$($MyInvocation.MyCommand.Name)]: SendReportToEmailRecipient parameter validation failed."
+                SayError "[$($MyInvocation.MyCommand.Name)]:   > $_"
             }
             return $null
         }
@@ -72,8 +72,8 @@ function Invoke-MLRUserLicenseRemoval {
             $null = New-Item -ItemType Directory -Path $OutputFolder -ErrorAction Stop
         }
         catch {
-            SayError "Failed to create the output directory [$($OutputFolder)]."
-            SayError "  > $($_.Exception.Message)"
+            SayError "[$($MyInvocation.MyCommand.Name)]: Failed to create the output directory [$($OutputFolder)]."
+            SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
             return $null
         }
     }
@@ -82,10 +82,16 @@ function Invoke-MLRUserLicenseRemoval {
     $csvFileName = "$OutputFolder\M365LicenseReaper_Raw_$($dateNowString).csv"
     $htmlFileName = "$OutputFolder\M365LicenseReaper_Report_$($dateNowString).html"
 
-    SayInfo "Output file will be saved to $($OutputFolder)"
+    SayInfo "[$($MyInvocation.MyCommand.Name)]: Output file will be saved to $($OutputFolder)"
 
     # Get the task list from the specified SharePoint Online site and list.
     $usersForLicenseRemoval = @(Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List)
+
+    if (-not $usersForLicenseRemoval) {
+        SayInfo "[$($MyInvocation.MyCommand.Name)]: There are no users due for license removal."
+        return $null
+    }
+
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskRunDateTime -Value $dateNow
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicenseName -Value ''
@@ -95,11 +101,14 @@ function Invoke-MLRUserLicenseRemoval {
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicenseName -Value ''
 
+    $lastMessageColumnName = ($Global:mlrTaskList.Columns.Columns | Where-Object { $_.DisplayName -eq 'Last Message' }).InternalName
+    $completedDateColumnName = ($Global:mlrTaskList.Columns.Columns | Where-Object { $_.DisplayName -eq 'Completed Date' }).InternalName
+
     $counter = 1
     $total = $usersForLicenseRemoval.Count
     foreach ($user in $usersForLicenseRemoval) {
 
-        SayInfo "Processing [$($counter)/$($total)] - Ticket: $($user.TaskTicket), Username: $($user.TaskUsername)"
+        SayInfo "[$($MyInvocation.MyCommand.Name)]: Processing [$($counter)/$($total)] - Ticket: $($user.TaskTicket), Username: $($user.TaskUsername)"
 
         # Initialize vars
         $taskStatusPostOp = ''
@@ -153,13 +162,14 @@ function Invoke-MLRUserLicenseRemoval {
 
             $fields = @{
                 fields = @{
-                    "Status"        = $taskStatusPostOp
-                    "Notes"         = $taskResult
-                    "CompletedDate" = $completedDate
-                    "LastMessage"   = $taskResult
+                    "Status"                      = $taskStatusPostOp
+                    "Notes"                       = $taskResult
+                    "$($completedDateColumnName)" = $completedDate
+                    "$($lastMessageColumnName)"   = $taskResult
                 }
             }
 
+            Write-Debug "Updating SPO List item for $($user.TaskUsername)"
             $null = Invoke-MgGraphRequest `
                 -Method PATCH `
                 -Uri "https://graph.microsoft.com/v1.0/sites/$($user.TaskSiteId)/lists/$($user.TaskListId)/items/$($user.TaskListItemId)" `
@@ -182,22 +192,22 @@ function Invoke-MLRUserLicenseRemoval {
 
     try {
         $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
-        SayInfo "CSV raw data file saved to $($csvFileName)."
+        SayInfo "[$($MyInvocation.MyCommand.Name)]: CSV raw data file saved to $($csvFileName)."
     }
     catch {
-        SayError "Failed to save the CSV output file."
-        SayError "  > $($_.Exception.Message)"
+        SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the CSV output file."
+        SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
     }
 
     try {
         $htmlContent = Write-MLRHtmlReport -InputObject $usersForLicenseRemoval
         $htmlContent | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
         # $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
-        SayInfo "HTML report file saved to $($htmlFileName)."
+        SayInfo "[$($MyInvocation.MyCommand.Name)]: HTML report file saved to $($htmlFileName)."
     }
     catch {
-        SayError "Failed to save the HTML output file."
-        SayError "  > $($_.Exception.Message)"
+        SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the HTML output file."
+        SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
     }
 
     if ($emailRecipientTable.IsValid) {
@@ -243,7 +253,7 @@ function Invoke-MLRUserLicenseRemoval {
         if ($SendReportToEmailRecipient.Bcc) {
             $mailBody.message += @{
                 bccRecipients = @(
-                    $(ConvertRecipientsToJSON $SendReportToEmailRecipient.Bcc)
+                    $(Add-MLREmailRecipient $SendReportToEmailRecipient.Bcc)
                 )
             }
         }
@@ -252,7 +262,7 @@ function Invoke-MLRUserLicenseRemoval {
             Send-MgUserMail -UserId $SendReportToEmailRecipient.From -BodyParameter $mailBody -ErrorAction Stop
         }
         catch {
-            SayError "Send email failed: $($_.Exception.Message)"
+            SayError "[$($MyInvocation.MyCommand.Name)]: Send email failed: $($_.Exception.Message)"
         }
     }
 

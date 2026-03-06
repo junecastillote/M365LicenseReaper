@@ -16,35 +16,21 @@ function Get-MLRUserDueForLicenseRemoval {
     $todayUTC = $today.ToUniversalTime()
     $todayUTCDateString = $todayUTC.ToString('yyyy-MM-dd')
 
-    # Get the site name and root host
-    $siteName = $siteUrl.Split("/")[-1]
-    $rootSiteHost = $siteUrl.Split("/")[2]
+    $Global:mlrTaskList = Test-MLRTaskList -SiteUrl $SiteUrl -List $List
 
-    # Get the SP Site Id
-    try {
-        $site = Invoke-MgGraphRequest -Uri "https://graph.microsoft.com/v1.0/sites/$($rootSiteHost):/sites/$($siteName)" -OutputType PSObject -ErrorAction Stop
-        $siteId = $site.Id
-    }
-    catch {
-        SayError "Error getting the site [$($SiteUrl)]."
-        SayError "  > Make sure that the URL is correct and the site exists."
-        SayError "  > $($_.Exception.Message)"
+    if ($Global:mlrTaskList.Status -ne 'Passed') {
+        SayError "[$($MyInvocation.MyCommand.Name)]: SharePoint Site, List, Columns validation failed."
+        SayError "[$($MyInvocation.MyCommand.Name)]:   > $($Global:mlrTaskList.Issues)"
         return $null
     }
-
-    # Get SP Site list
-    try {
-        $splist = Get-MgSiteList -SiteId $siteId -ListId $List -ErrorAction Stop
-        $listId = $splist.Id
-        $listUrl = $splist.WebUrl
-        $listColumns = Get-MgSiteListColumn -SiteId $siteId -ListId $listId -ErrorAction Stop
-        $dueDateColumnName = ($listColumns | Where-Object { $_.DisplayName -eq 'Due Date' }).Name
-    }
-    catch {
-        SayError "Error getting the list [$List]."
-        SayError "  > Make sure that the list name or id is correct and that it exists."
-        SayError "  > $($_.Exception.Message)"
-        return $null
+    else {
+        $site = $Global:mlrTaskList.Site
+        $siteId = $Global:mlrTaskList.Site.id
+        $spList = $Global:mlrTaskList.List
+        $listId = $Global:mlrTaskList.List.Id
+        $listUrl = $Global:mlrTaskList.List.WebUrl
+        $listColumns = $Global:mlrTaskList.Columns.Columns
+        $dueDateColumnName = ($listColumns | Where-Object { $_.DisplayName -eq 'Due Date' }).InternalName
     }
 
     $result = [System.Collections.Generic.List[System.Object]]@()
@@ -77,7 +63,7 @@ function Get-MLRUserDueForLicenseRemoval {
                                 TaskSiteId             = $siteId
                                 TaskSiteName           = $site.Name
                                 TaskListId             = $listId
-                                TaskListName           = $splist.Name
+                                TaskListName           = $spList.Name
                                 TaskListUrl            = $listUrl
                                 TaskListItemId         = $listItem.id
                                 TaskListItemURL        = "$($listUrl)/DispForm.aspx?ID=$($listItem.id)"
@@ -90,8 +76,8 @@ function Get-MLRUserDueForLicenseRemoval {
         return $result
     }
     catch {
-        SayError "Error getting the items from the list [$($list.DisplayName)]."
-        SayError "  > $($_.Exception.Message)"
+        SayError "[$($MyInvocation.MyCommand.Name)]: Error getting the items from the list [$($spList.DisplayName)]."
+        SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
         return $null
     }
 }

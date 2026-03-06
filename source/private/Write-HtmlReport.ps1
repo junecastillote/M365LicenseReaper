@@ -42,9 +42,10 @@ function Write-MLRHtmlReport {
         $htmlRow += '<td><a href="' + $lineItem.TaskListItemURL + '" target="_blank">' + $lineItem.TaskTicket + '</a>' + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskUsername + '</td>'
         $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskStatusPostOp + '</td>'
-        $htmlRow += '<td>' + $lineItem.TaskCreatedDate + '</td>'
-        $htmlRow += '<td>' + $lineItem.TaskDueDate + '</td>'
-        $htmlRow += '<td>' + $lineItem.TaskCompletedDate + '</td>'
+        $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd HH:mm:ss UTCzzzz') + '</td>'
+        $htmlRow += '<td>' + $lineItem.TaskDueDate.ToString('yyyy-MM-dd HH:mm:ss UTCzzzz') + '</td>'
+        # $htmlRow += '<td>' + $lineItem.TaskCompletedDate.ToString('yyyy-MM-dd HH:mm:ss UTCzzzz') + '</td>'
+        $htmlRow += '<td>' + $(if ($lineItem.TaskCompletedDate) { $lineItem.TaskCompletedDate.ToString('yyyy-MM-dd HH:mm:ss UTCzzzz') }) + '</td>'
         $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser) ($($lineItem.TaskCreatedByUserEmail))" + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskResult + '</td>'
 
