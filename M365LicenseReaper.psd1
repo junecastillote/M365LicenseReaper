@@ -76,8 +76,7 @@
         'Remove-MLRUserLicenseAssignment',
         'Invoke-MLRUserLicenseRemoval',
         'Get-MLRUserAccountState',
-        'Test-MLRTaskSite',
-        'Test-MLRSPListSchemaCompliance'
+        'Test-MLRTaskList'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
