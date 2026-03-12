@@ -12,7 +12,7 @@
     RootModule           = 'M365LicenseReaper.psm1'
 
     # Version number of this module.
-    ModuleVersion        = '0.3.0'
+    ModuleVersion        = '0.3.1'
 
     # Supported PSEditions
     CompatiblePSEditions = @('Desk', 'Core')
@@ -76,7 +76,10 @@
         'Remove-MLRUserLicenseAssignment',
         'Invoke-MLRUserLicenseRemoval',
         'Get-MLRUserAccountState',
-        'Test-MLRTaskList'
+        'Test-MLRTaskList',
+        'Get-MLRSiteByURL',
+        'Get-MLRSiteListByName',
+        'Deploy-MLRTaskList'
     )
 
     # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
