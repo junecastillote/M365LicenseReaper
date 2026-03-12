@@ -33,7 +33,7 @@ function Write-MLRHtmlReport {
         $reportOrganization = (Get-MgOrganization).DisplayName
     }
 
-    $htmlTemplateFile = Join-Path $module.ModuleBase 'source' 'private' 'report_template.html'
+    $htmlTemplateFile = Join-Path $module.ModuleBase 'source\private\report_template.html'
     $htmlContent = Get-Content -Path $htmlTemplateFile
 
     $htmlRow = @()
