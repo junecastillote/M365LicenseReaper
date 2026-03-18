@@ -259,6 +259,7 @@ function Invoke-MLRUserLicenseRemoval {
         }
 
         try {
+            SayInfo "[$($MyInvocation.MyCommand.Name)]: Sending report to recipients..."
             Send-MgUserMail -UserId $SendReportToEmailRecipient.From -BodyParameter $mailBody -ErrorAction Stop
         }
         catch {
