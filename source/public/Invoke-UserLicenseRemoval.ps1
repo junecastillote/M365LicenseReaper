@@ -36,6 +36,12 @@ function Invoke-MLRUserLicenseRemoval {
         $SkipIfEnabled
     )
 
+    $module = ThisModule
+    $moduleString = "|   $($module.Name) v$($module.Version)   |"
+    Say "$("=" * $moduleString.Length)"
+    Say $moduleString
+    Say "$("=" * $moduleString.Length)"
+
     Write-Debug "Keys = $($PSBoundParameters.Keys -join ";")"
 
     # If -SendReportToEmailRecipient is used, validate the email recipient table.
