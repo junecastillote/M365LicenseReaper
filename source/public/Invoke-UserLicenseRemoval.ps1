@@ -44,18 +44,6 @@ function Invoke-MLRUserLicenseRemoval {
 
     Write-Debug "Keys = $($PSBoundParameters.Keys -join ";")"
 
-    # If -SendReportToEmailRecipient is used, validate the email recipient table.
-    if ($PSBoundParameters.ContainsKey('SendReportToEmailRecipient')) {
-        $emailRecipientTable = Test-MLRRecipientTable $SendReportToEmailRecipient
-        if ($emailRecipientTable.IsValid -ne $true) {
-            $emailRecipientTable.Errors | ForEach-Object {
-                SayError "[$($MyInvocation.MyCommand.Name)]: SendReportToEmailRecipient parameter validation failed."
-                SayError "[$($MyInvocation.MyCommand.Name)]:   > $_"
-            }
-            return $null
-        }
-    }
-
     # Local time zone
     $tz = Get-TimeZone
 
@@ -72,6 +60,68 @@ function Invoke-MLRUserLicenseRemoval {
     # Current date
     $dateNow = (Get-Date)
 
+    # If -SendReportToEmailRecipient is used, validate the email recipient table.
+    if ($PSBoundParameters.ContainsKey('SendReportToEmailRecipient')) {
+        $emailRecipientTable = Test-MLRRecipientTable $SendReportToEmailRecipient
+        if ($emailRecipientTable.IsValid -ne $true) {
+            SayError "[$($MyInvocation.MyCommand.Name)]: SendReportToEmailRecipient parameter validation failed."
+            $emailRecipientTable.Errors | ForEach-Object {
+                SayError "[$($MyInvocation.MyCommand.Name)]:   > $_"
+            }
+            throw "SendReportToEmailRecipient parameter validation failed."
+        }
+        else {
+            # If recipient table is validated, the initialize the message content.
+            $runDateTime = ($dateNow).ToString("MMMM dd, yyyy hh:mm tt [zzzz]")
+            $organizationName = (Get-MgOrganization).DisplayName
+            $subject = "[$($organizationName)] Microsoft 365 User License Reaper - $($runDateTime)"
+
+            # Compose the mailbody
+            $mailBody = @{
+                message = @{
+                    subject                = $subject
+                    body                   = @{
+                        content     = ''
+                        contentType = "HTML"
+                    }
+                    internetMessageHeaders = @(
+                        @{
+                            name  = "X-Mailer"
+                            value = "M365LicenseReaper by june.castillote@gmail.com"
+                        }
+                    )
+                }
+            }
+
+            # To recipients
+            if ($SendReportToEmailRecipient.To) {
+                $mailBody.message += @{
+                    toRecipients = @(
+                        $(Add-MLREmailRecipient $SendReportToEmailRecipient.To)
+                    )
+                }
+            }
+
+            # Cc recipients
+            if ($SendReportToEmailRecipient.Cc) {
+                $mailBody.message += @{
+                    ccRecipients = @(
+                        $(Add-MLREmailRecipient $SendReportToEmailRecipient.Cc)
+                    )
+                }
+            }
+
+            # BCC recipients
+            if ($SendReportToEmailRecipient.Bcc) {
+                $mailBody.message += @{
+                    bccRecipients = @(
+                        $(Add-MLREmailRecipient $SendReportToEmailRecipient.Bcc)
+                    )
+                }
+            }
+        }
+    }
+
     # Create the output folder if it doesn't exist.
     if (-not (Test-Path $OutputFolder)) {
         try {
@@ -79,8 +129,7 @@ function Invoke-MLRUserLicenseRemoval {
         }
         catch {
             SayError "[$($MyInvocation.MyCommand.Name)]: Failed to create the output directory [$($OutputFolder)]."
-            SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
-            return $null
+            throw $_.Exception.Message
         }
     }
 
@@ -93,8 +142,24 @@ function Invoke-MLRUserLicenseRemoval {
     # Get the task list from the specified SharePoint Online site and list.
     $usersForLicenseRemoval = @(Get-MLRUserDueForLicenseRemoval -SiteUrl $SiteUrl -List $List)
 
+    # If there are no users due for license removal.
     if (-not $usersForLicenseRemoval) {
         SayInfo "[$($MyInvocation.MyCommand.Name)]: There are no users due for license removal."
+
+        $htmlContent = ((Get-Content (Join-Path $module.ModuleBase 'source\private\report_template_no_users.html')) -join "`n")
+
+        if ($emailRecipientTable.IsValid) {
+            $mailBody.message.body.content = $htmlContent
+            try {
+                SayInfo "[$($MyInvocation.MyCommand.Name)]: Sending notification to recipients..."
+                Send-MgUserMail -UserId $SendReportToEmailRecipient.From -BodyParameter $mailBody -ErrorAction Stop
+            }
+            catch {
+                # If the send email failed, throw a terminating error.
+                throw "Send email failed: $($_.Exception.Message)"
+            }
+        }
+        # If there are no users due for license removal, the script ends here, without error.
         return $null
     }
 
@@ -203,6 +268,7 @@ function Invoke-MLRUserLicenseRemoval {
     catch {
         SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the CSV output file."
         SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
+        # NOTE: Failure to save the CSV file is a non-terminating error and the script continues.
     }
 
     try {
@@ -214,62 +280,18 @@ function Invoke-MLRUserLicenseRemoval {
     catch {
         SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the HTML output file."
         SayError "[$($MyInvocation.MyCommand.Name)]:   > $($_.Exception.Message)"
+        # NOTE: Failure to save the HTML file is a non-terminating error and the script continues.
     }
 
     if ($emailRecipientTable.IsValid) {
-        $runDateTime = ($dateNow).ToString("MMMM dd, yyyy hh:mm tt [zzzz]")
-        $organizationName = (Get-MgOrganization).DisplayName
-        $subject = "[$($organizationName)] Microsoft 365 User License Reaper - $($runDateTime)"
-
-        $mailBody = @{
-            message = @{
-                subject                = $subject
-                body                   = @{
-                    content     = $htmlContent
-                    contentType = "HTML"
-                }
-                internetMessageHeaders = @(
-                    @{
-                        name  = "X-Mailer"
-                        value = "M365LicenseReaper by june.castillote@gmail.com"
-                    }
-                )
-            }
-        }
-
-        # To recipients
-        if ($SendReportToEmailRecipient.To) {
-            $mailBody.message += @{
-                toRecipients = @(
-                    $(Add-MLREmailRecipient $SendReportToEmailRecipient.To)
-                )
-            }
-        }
-
-        # Cc recipients
-        if ($SendReportToEmailRecipient.Cc) {
-            $mailBody.message += @{
-                ccRecipients = @(
-                    $(Add-MLREmailRecipient $SendReportToEmailRecipient.Cc)
-                )
-            }
-        }
-
-        # BCC recipients
-        if ($SendReportToEmailRecipient.Bcc) {
-            $mailBody.message += @{
-                bccRecipients = @(
-                    $(Add-MLREmailRecipient $SendReportToEmailRecipient.Bcc)
-                )
-            }
-        }
-
+        $mailBody.message.body.content = $htmlContent
         try {
             SayInfo "[$($MyInvocation.MyCommand.Name)]: Sending report to recipients..."
             Send-MgUserMail -UserId $SendReportToEmailRecipient.From -BodyParameter $mailBody -ErrorAction Stop
         }
         catch {
-            SayError "[$($MyInvocation.MyCommand.Name)]: Send email failed: $($_.Exception.Message)"
+            # SayError "[$($MyInvocation.MyCommand.Name)]: Send email failed: $($_.Exception.Message)"
+            throw "Send email failed: $($_.Exception.Message)"
         }
     }
 
