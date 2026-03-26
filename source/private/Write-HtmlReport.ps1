@@ -45,7 +45,13 @@ function Write-MLRHtmlReport {
         $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd HH:mm:ss') + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskDueDate.ToString('yyyy-MM-dd') + '</td>'
         $htmlRow += '<td>' + $(if ($lineItem.TaskCompletedDate) { $lineItem.TaskCompletedDate.ToString('yyyy-MM-dd HH:mm:ss') }) + '</td>'
-        $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser) ($($lineItem.TaskCreatedByUserEmail))" + '</td>'
+        if ($lineItem.TaskCreatedByUserEmail) {
+            $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser) ($($lineItem.TaskCreatedByUserEmail))" + '</td>'
+        }
+        else {
+            $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser)" + '</td>'
+        }
+        # $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser) ($($lineItem.TaskCreatedByUserEmail))" + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskResult + '</td>'
 
         # if ($lineItem.AssignedLicenseName) {
