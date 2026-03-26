@@ -133,6 +133,8 @@ function Invoke-MLRUserLicenseRemoval {
         }
     }
 
+    $OutputFolder = (Resolve-Path $OutputFolder).Path
+
     $dateNowString = $datenow.ToString('yyyyMMddTHHmmss')
     $csvFileName = "$OutputFolder\M365LicenseReaper_Raw_$($dateNowString).csv"
     $htmlFileName = "$OutputFolder\M365LicenseReaper_Report_$($dateNowString).html"
