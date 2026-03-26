@@ -43,7 +43,7 @@ function Write-MLRHtmlReport {
         $htmlRow += '<td>' + $lineItem.TaskUsername + '</td>'
         $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskStatusPostOp + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd HH:mm:ss') + '</td>'
-        $htmlRow += '<td>' + $lineItem.TaskDueDate.ToString('yyyy-MM-dd HH:mm:ss') + '</td>'
+        $htmlRow += '<td>' + $lineItem.TaskDueDate.ToString('yyyy-MM-dd') + '</td>'
         $htmlRow += '<td>' + $(if ($lineItem.TaskCompletedDate) { $lineItem.TaskCompletedDate.ToString('yyyy-MM-dd HH:mm:ss') }) + '</td>'
         $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser) ($($lineItem.TaskCreatedByUserEmail))" + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskResult + '</td>'
