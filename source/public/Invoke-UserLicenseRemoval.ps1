@@ -60,6 +60,12 @@ function Invoke-MLRUserLicenseRemoval {
     # Current date
     $dateNow = (Get-Date)
 
+
+    $runDateTime = ($dateNow).ToString("MMMM dd, yyyy hh:mm tt [zzzz]")
+    $organizationName = (Get-MgOrganization).DisplayName
+    $reportTitle = "Microsoft 365 User License Reaper - $($runDateTime)"
+    $subject = "[$($organizationName)] $reportTitle"
+
     # If -SendReportToEmailRecipient is used, validate the email recipient table.
     if ($PSBoundParameters.ContainsKey('SendReportToEmailRecipient')) {
         $emailRecipientTable = Test-MLRRecipientTable $SendReportToEmailRecipient
@@ -72,9 +78,7 @@ function Invoke-MLRUserLicenseRemoval {
         }
         else {
             # If recipient table is validated, the initialize the message content.
-            $runDateTime = ($dateNow).ToString("MMMM dd, yyyy hh:mm tt [zzzz]")
-            $organizationName = (Get-MgOrganization).DisplayName
-            $subject = "[$($organizationName)] Microsoft 365 User License Reaper - $($runDateTime)"
+
 
             # Compose the mailbody
             $mailBody = @{
@@ -149,6 +153,14 @@ function Invoke-MLRUserLicenseRemoval {
         SayInfo "[$($MyInvocation.MyCommand.Name)]: There are no users due for license removal."
 
         $htmlContent = ((Get-Content (Join-Path $module.ModuleBase 'source\private\report_template_no_users.html')) -join "`n")
+
+        $htmlContent = $htmlContent -replace `
+            "vOrganization", $organizationName -replace `
+            "vReportTitle", $reportTitle -replace `
+            "vComputerName", $(hostname) -replace `
+            "vModuleInfo", $('<a href="' + $module.ProjectUri + '">' + "$($module.Name) v$($module.Version)" + '</a>')
+
+        $htmlContent | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
 
         if ($emailRecipientTable.IsValid) {
             $mailBody.message.body.content = $htmlContent

@@ -69,6 +69,11 @@ function Write-MLRHtmlReport {
         $htmlRow += "</tr>"
     }
 
-    $htmlContent = $htmlContent -replace "vTableRows", ($htmlRow -join "`n") -replace "vOrganization", $reportOrganization -replace "vReportTitle", $reportTitle
+    $htmlContent = $htmlContent -replace `
+        "vTableRows", ($htmlRow -join "`n") -replace `
+        "vOrganization", $reportOrganization -replace `
+        "vReportTitle", $reportTitle -replace `
+        "vComputerName", $(hostname) -replace `
+        "vModuleInfo", $('<a href="' + $module.ProjectUri + '">' + "$($module.Name) v$($module.Version)" + '</a>')
     ($htmlContent -join "`n")
 }
