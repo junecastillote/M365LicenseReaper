@@ -33,7 +33,17 @@ function Invoke-MLRUserLicenseRemoval {
 
         [Parameter()]
         [switch]
-        $SkipIfEnabled
+        $SkipIfEnabled,
+
+        [parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $CustomTitle,
+
+        [parameter()]
+        [ValidateNotNullOrEmpty()]
+        [string]
+        $CustomOrganization
     )
 
     $module = ThisModule
@@ -60,11 +70,24 @@ function Invoke-MLRUserLicenseRemoval {
     # Current date
     $dateNow = (Get-Date)
 
-
     $runDateTime = ($dateNow).ToString("MMMM dd, yyyy hh:mm tt [zzzz]")
-    $organizationName = (Get-MgOrganization).DisplayName
-    $reportTitle = "Microsoft 365 User License Reaper - $($runDateTime)"
-    $subject = "[$($organizationName)] $reportTitle"
+
+    if ($CustomTitle) {
+        $reportTitle = "$CustomTitle"
+    }
+    else {
+        $reportTitle = "Microsoft 365 User License Reaper"
+    }
+
+    if ($CustomOrganization) {
+        $organizationName = $CustomOrganization
+    }
+    else {
+        $organizationName = (Get-MgOrganization).DisplayName
+    }
+
+    $subject = "[$($organizationName)] $reportTitle - $($runDateTime)"
+
 
     # If -SendReportToEmailRecipient is used, validate the email recipient table.
     if ($PSBoundParameters.ContainsKey('SendReportToEmailRecipient')) {
@@ -78,7 +101,6 @@ function Invoke-MLRUserLicenseRemoval {
         }
         else {
             # If recipient table is validated, the initialize the message content.
-
 
             # Compose the mailbody
             $mailBody = @{
@@ -286,7 +308,8 @@ function Invoke-MLRUserLicenseRemoval {
     }
 
     try {
-        $htmlContent = Write-MLRHtmlReport -InputObject $usersForLicenseRemoval
+
+        $htmlContent = Write-MLRHtmlReport -InputObject $usersForLicenseRemoval -CustomTitle $reportTitle -CustomOrganization $organizationName
         $htmlContent | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
         # $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
         SayInfo "[$($MyInvocation.MyCommand.Name)]: HTML report file saved to $($htmlFileName)."
