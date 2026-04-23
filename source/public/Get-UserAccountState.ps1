@@ -55,11 +55,13 @@ function Get-MLRUserAccountState {
         SayError "[$($MyInvocation.MyCommand.Name)]: $($_.Exception.Message)"
         if ($_.Exception.Message -like "*does not exist*") {
             $action = 'Cancel'
+            $actionReason = 'User does not exist'
             $readinessNote = 'User account is not found. This task will not be retried.'
         }
         else {
             $action = 'Skip'
-            $readinessNote = "Cannot determine readiness because there was an error whlie getting the user account. $($_.Exception.Message)"
+            $actionReason = 'Error'
+            $readinessNote = "Cannot determine readiness because there was an error while getting the user account. $($_.Exception.Message)"
         }
 
         return $([PSCustomObject]([ordered]@{
@@ -73,6 +75,7 @@ function Get-MLRUserAccountState {
                     LicenseGroup         = ''
                     LicenseGroupName     = ''
                     Action               = $action
+                    ActionReason         = $actionReason
                     ReadinessNote        = $readinessNote
                 }))
     }
@@ -115,7 +118,8 @@ function Get-MLRUserAccountState {
         # If without license
         if (!$userLicenseCollection) {
             $action = 'Cancel'
-            $readinessNote = "License removal canceled - user accout is not licensed as of $($todayDateString). This task will not be retried."
+            $actionReason = 'No license'
+            $readinessNote = "User accout is not licensed as of $($todayDateString). This task will not be retried."
             $assignedLicense = ''
         }
 
@@ -126,18 +130,21 @@ function Get-MLRUserAccountState {
                 # with license + account enabled (skip)
                 if ($user.AccountEnabled) {
                     $action = 'Skip'
+                    $actionReason = 'Account enabled'
                     $readinessNote = "License removal not allowed - user account is currently enabled. This task will be retried."
                 }
 
                 # with license + account disabled
                 if (!$user.AccountEnabled) {
                     $action = 'Remove'
+                    $actionReason = 'Account disabled'
                     $readinessNote = "License removal allowed - user account is disabled. This task is final."
                 }
             }
             # Control logic: Remove, as long as the user is licensed. Ignore whether account is still enabled.
             else {
                 $action = 'Remove'
+                $actionReason = 'User has license'
                 $readinessNote = "License removal allowed. This task is final."
             }
 
@@ -205,6 +212,7 @@ function Get-MLRUserAccountState {
                     LicenseGroup         = $licenseGroupIds -join ","
                     LicenseGroupName     = $licenseGroupNames -join ","
                     Action               = $action
+                    ActionReason         = $actionReason
                     ReadinessNote        = $readinessNote
                 }))
     }
@@ -221,6 +229,7 @@ function Get-MLRUserAccountState {
                     LicenseGroup         = ''
                     LicenseGroupName     = ''
                     Action               = 'Skip'
+                    ActionReason         = 'Error'
                     ReadinessNote        = "Cannot determine readiness because there was an error getting the user license details. $($_.Exception.Message). This task will be retried."
                 }))
     }

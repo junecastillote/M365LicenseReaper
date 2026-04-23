@@ -205,6 +205,7 @@ function Invoke-MLRUserLicenseRemoval {
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskAction -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusPostOp -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResult -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResultDetail -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicenseName -Value ''
 
@@ -220,6 +221,7 @@ function Invoke-MLRUserLicenseRemoval {
         # Initialize vars
         $taskStatusPostOp = ''
         $taskResult = ''
+        $taskResultDetail = ''
         $completedDate = $null
 
         # Get the user account's readiness state for license removal
@@ -232,14 +234,22 @@ function Invoke-MLRUserLicenseRemoval {
         # If readiness action state is 'Cancel'
         if ($readinessState.Action -eq 'Cancel') {
             $taskStatusPostOp = 'Canceled'
-            $taskResult = $($readinessState.ReadinessNote)
+            $taskResult = "Completed - No action"
+            $taskResultDetail = $($readinessState.ReadinessNote)
             $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
 
         # If readiness action state is 'Skip'
         if ($readinessState.Action -eq 'Skip') {
             $taskStatusPostOp = 'Pending'
-            $taskResult = $($readinessState.ReadinessNote)
+
+            switch ($readinessState.ActionReason) {
+                'Error' { $taskResult = 'Skipped - Error' }
+                'Account enabled' { $taskResult = 'Skipped - Not allowed' }
+                default { $taskResult = 'Skipped' }
+            }
+
+            $taskResultDetail = $($readinessState.ReadinessNote)
             $completedDate = $null
         }
 
@@ -248,14 +258,16 @@ function Invoke-MLRUserLicenseRemoval {
             $removeResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",")
             if ($removeResult -eq 'Successful') {
                 $taskStatusPostOp = 'Completed'
-                $taskResult = "License removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
+                $taskResult = "Completed - License removed"
+                $taskResultDetail = "License removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
                 $user.RemovedLicense = $readinessState.AssignedLicense
                 $user.RemovedLicenseName = $readinessState.AssignedLicenseName
                 $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
             }
             else {
                 $taskStatusPostOp = $readinessState.TaskStatusPreOp
-                $taskResult = $removeResult
+                $taskResult = "Failed - Error"
+                $taskResultDetail = $removeResult -replace "Failed - ", ""
             }
         }
 
@@ -270,9 +282,9 @@ function Invoke-MLRUserLicenseRemoval {
             $fields = @{
                 fields = @{
                     "Status"                      = $taskStatusPostOp
-                    "Notes"                       = $taskResult
+                    "Notes"                       = $taskResultDetail
                     "$($completedDateColumnName)" = $completedDate
-                    "$($lastMessageColumnName)"   = $taskResult
+                    "$($lastMessageColumnName)"   = $taskResultDetail
                 }
             }
 
@@ -285,12 +297,14 @@ function Invoke-MLRUserLicenseRemoval {
                 -ErrorAction Stop
 
             $user.TaskResult = $taskResult
+            $user.TaskResultDetail = $taskResultDetail
             $user.TaskStatusPostOp = $taskStatusPostOp
             $user.TaskCompletedDate = $(if ($completedDate) { (Get-Date $completedDate) })
         }
         catch {
             SayError $_.Exception.Message
-            $user.TaskResult = $_.Exception.Message
+            $user.TaskResult = 'Failed - Error'
+            $user.TaskResultDetail = $_.Exception.Message
             $user.TaskStatusPostOp = $readinessState.TaskStatusPreOp
             $user.TaskCompletedDate = $null
         }
