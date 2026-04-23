@@ -42,7 +42,7 @@ function Get-MLRUserDueForLicenseRemoval {
 
             fields/Status = Pending
             AND
-            fields/DueDate < or = Date Today in UTC
+            fields/DueDate <= Date Today in UTC
         #>
         $listItemCollection = @(Get-MgSiteListItem -SiteId $siteId -ListId $listId -ExpandProperty "fields" -Filter "fields/Status eq 'Pending' and fields/$($dueDateColumnName) le '$($todayUTCDateString)'" -ErrorAction Stop)
         if ($listItemCollection) {

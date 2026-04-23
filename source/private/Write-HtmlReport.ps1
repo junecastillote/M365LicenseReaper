@@ -41,7 +41,7 @@ function Write-MLRHtmlReport {
         $htmlRow += "<tr>"
         $htmlRow += '<td><a href="' + $lineItem.TaskListItemURL + '" target="_blank">' + $lineItem.TaskTicket + '</a>' + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskUsername + '</td>'
-        # $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskStatusPostOp + '</td>'
+
         $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskResult + '</td>'
         $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskResultDetail + '</td>'
         $htmlRow += '<td>' + ($lineItem.AssignedLicenseName -replace ',', ';<br>') + '</td>'
@@ -55,20 +55,6 @@ function Write-MLRHtmlReport {
         else {
             $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser)" + '</td>'
         }
-        # $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser) ($($lineItem.TaskCreatedByUserEmail))" + '</td>'
-
-
-        # if ($lineItem.AssignedLicenseName) {
-        #     $htmlRow += '<td><ul>'
-        #     $lineItem.AssignedLicenseName -split "," | ForEach-Object {
-        #         $htmlRow += "<li>$($_)</li>"
-        #     }
-        #     $htmlRow += '</ul></td>'
-        # }
-        # else {
-        #     $htmlRow += '<td></td>'
-        # }
-
 
         $htmlRow += "</tr>"
     }
