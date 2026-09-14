@@ -24,12 +24,16 @@ function Get-MLRUserAccountState {
     $actionReason = ''
     $readinessNote = ''
 
-    if (-not $Global:mlrGroupCache) {
-        Write-Debug "Creating group cache in session..."
-        $Global:mlrGroupCache = @()
-    }
-    else {
-        Write-Debug "Group cache exists in session..."
+    if ($IncludeInheritedLicense) {
+        Write-Debug "Switch -IncludeInheritedLicense used."
+        Write-Debug "  - The inherited licenses assigned by group will be included."
+        if (-not $Global:mlrGroupCache) {
+            Write-Debug "Creating group cache in session..."
+            $Global:mlrGroupCache = @()
+        }
+        else {
+            Write-Debug "Group cache exists in session..."
+        }
     }
 
     if (-not $Global:mlrSubscribedSku) {
@@ -112,7 +116,7 @@ function Get-MLRUserAccountState {
         $licenseGroupNames = @()
 
         # Update the group cache
-        if ($licenseGroupIds) {
+        if ($licenseGroupIds -and $IncludeInheritedLicense) {
             foreach ($id in $licenseGroupIds) {
                 if (-not ($groupName = ($Global:mlrGroupCache | Where-Object { $_.ID -eq $id }).DisplayName)) {
                     Write-Debug "Group [$($id)] not found in cache. Retrieving group online."
