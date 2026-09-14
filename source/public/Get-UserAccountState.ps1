@@ -7,13 +7,22 @@ function Get-MLRUserAccountState {
 
         [Parameter()]
         [switch]
-        $SkipIfEnabled
+        $SkipIfEnabled,
+
+        # Parameter help description
+        [Parameter()]
+        [switch]
+        $IncludeInheritedLicense
     )
     # Write-Debug $MyInvocation.MyCommand.Name
     Write-Debug "Processing - $($Username)"
 
     $today = (Get-Date)
     $todayDateString = $today.ToString('yyyy-MM-dd')
+
+    $action = ''
+    $actionReason = ''
+    $readinessNote = ''
 
     if (-not $Global:mlrGroupCache) {
         Write-Debug "Creating group cache in session..."
@@ -82,7 +91,14 @@ function Get-MLRUserAccountState {
 
     try {
         # Get user licenses
-        $userLicenseCollection = $user.LicenseAssignmentStates
+        $userLicenseCollection = $(
+            if (-not $IncludeInheritedLicense) {
+                $user.LicenseAssignmentStates | Where-Object { -not $_.AssignedByGroup }
+            }
+            else {
+                $user.LicenseAssignmentStates
+            }
+        )
 
         if ($userLicenseCollection) {
             foreach ($license in $userLicenseCollection) {
@@ -141,6 +157,7 @@ function Get-MLRUserAccountState {
                     $readinessNote = "License removal allowed - user account is disabled. This task is final."
                 }
             }
+
             # Control logic: Remove, as long as the user is licensed. Ignore whether account is still enabled.
             else {
                 $action = 'Remove'
