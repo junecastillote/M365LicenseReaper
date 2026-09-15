@@ -8,7 +8,11 @@ function Remove-MLRUserLicenseAssignment {
 
         [Parameter(Mandatory)]
         [guid[]]
-        $SkuId
+        $SkuId,
+
+        [Parameter()]
+        [switch]
+        $TestMode
     )
 
     # If user exists and has license, remove them.
@@ -22,7 +26,9 @@ function Remove-MLRUserLicenseAssignment {
     }
 
     try {
-        $null = Set-MgUserLicense -UserId $Username -BodyParameter $params -ErrorAction Stop
+        if (-not $TestMode) {
+            $null = Set-MgUserLicense -UserId $Username -BodyParameter $params -ErrorAction Stop
+        }
         return "Successful"
     }
     catch {

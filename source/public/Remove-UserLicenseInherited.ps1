@@ -26,6 +26,7 @@ function Remove-MLRUserLicenseInherited {
     $skippedGroupName = @()
     $groupName = @()
     $notes = @()
+    $skippedNotes = @()
 
     foreach ($groupId in $LicenseGroupId) {
         $groupName = $((Get-GroupFromCache $groupId).DisplayName)
@@ -44,7 +45,8 @@ function Remove-MLRUserLicenseInherited {
             else {
                 Write-Debug "[$UserId] is not a member of [$($groupName)]"
                 $skippedGroup += $groupId
-                $notes += "Not a member of [$($groupName)]"
+                # $notes += "Not a member of [$($groupName)]"
+                $skippedNotes += "Not a member of [$($groupName)]"
             }
         }
         catch {
@@ -64,12 +66,6 @@ function Remove-MLRUserLicenseInherited {
                 ($Global:mlrGroupCache | Where-Object { $_.id -eq $group }).AssignedLicenses.SkuId
             }
         )
-
-        # $removedLicenseName += $(
-        #     foreach ($license in $removedLicense) {
-        #         Get-LicenseNameFromCache $license
-        #     }
-        # )
 
         $removedLicenseName += (Get-LicenseNameFromCache $removedLicense -Debug:$false)
     }

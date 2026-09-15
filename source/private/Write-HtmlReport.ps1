@@ -42,8 +42,8 @@ function Write-MLRHtmlReport {
         $htmlRow += '<td><a href="' + $lineItem.TaskListItemURL + '" target="_blank">' + $lineItem.TaskTicket + '</a>' + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskUsername + '</td>'
 
-        $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskResult + '</td>'
-        $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskResultDetail + '</td>'
+        $htmlRow += '<td class="' + ($lineItem.TaskStatusAssignedLicensePostop.ToLower()) + '">' + $lineItem.TaskResultAssignedLicense + '</td>'
+        $htmlRow += '<td class="' + ($lineItem.TaskStatusAssignedLicensePostop.ToLower()) + '">' + $lineItem.TaskResultDetailAssignedLicense + '</td>'
         # $htmlRow += '<td>' + ($lineItem.RemovedAssignedLicenseName -replace ',', ';<br>') + '</td>'
         if ($lineItem.RemovedAssignedLicenseName) {
             $htmlRow += '<td><strong>Direct:</strong><br>' + ($lineItem.RemovedAssignedLicenseName -replace ',', ';<br>') + '</td>'

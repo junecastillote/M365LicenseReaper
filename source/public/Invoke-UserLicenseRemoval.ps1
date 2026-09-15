@@ -47,7 +47,12 @@ function Invoke-MLRUserLicenseRemoval {
 
         [Parameter()]
         [bool]
-        $IncludeInheritedLicense = $true
+        $IncludeInheritedLicense = $true,
+
+        # Parameter help description
+        [Parameter()]
+        [switch]
+        $TestMode
     )
 
     $module = ThisModule
@@ -57,6 +62,10 @@ function Invoke-MLRUserLicenseRemoval {
     Say "$("=" * $moduleString.Length)"
 
     Write-Debug "Keys = $($PSBoundParameters.Keys -join ";")"
+
+    if ($TestMode) {
+        SayWarning "[$($MyInvocation.MyCommand.Name)]: Running in TestMode. No changes will be made to users and list items."
+    }
 
     # Local time zone
     $tz = Get-TimeZone
@@ -206,10 +215,13 @@ function Invoke-MLRUserLicenseRemoval {
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskRunDateTime -Value $dateNow
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name AssignedLicenseName -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name InheritedLicense -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name InheritedLicenseName -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskAction -Value ''
-    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusPostOp -Value ''
-    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResult -Value ''
-    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResultDetail -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusAssignedLicensePostop -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusInheritedLicensePostop -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResultAssignedLicense -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResultDetailAssignedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedAssignedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedAssignedLicenseName -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedInheritedLicense -Value ''
@@ -225,9 +237,10 @@ function Invoke-MLRUserLicenseRemoval {
         SayInfo "[$($MyInvocation.MyCommand.Name)]: Processing [$($counter)/$($total)] - Ticket: $($user.TaskTicket), Username: $($user.TaskUsername)"
 
         # Initialize vars
-        $taskStatusPostOp = ''
-        $taskResult = ''
+        $taskStatusAssignedLicensePostop = ''
+        $taskResultAssignedLicense = ''
         $taskResultDetail = ''
+        $taskResultDetailAssignedLicense = ''
         $completedDate = $null
 
         $removeAssignedLicenseResult = ''
@@ -242,20 +255,20 @@ function Invoke-MLRUserLicenseRemoval {
 
         # If readiness action state is 'Cancel'
         if ($readinessState.Action -eq 'Cancel') {
-            $taskStatusPostOp = 'Canceled'
-            $taskResult = "Completed - No action"
+            $taskStatusAssignedLicensePostop = 'Canceled'
+            $taskResultAssignedLicense = "Completed - No action"
             $taskResultDetail = $($readinessState.ReadinessNote)
             $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
         }
 
         # If readiness action state is 'Skip'
         if ($readinessState.Action -eq 'Skip') {
-            $taskStatusPostOp = 'Pending'
+            $taskStatusAssignedLicensePostop = 'Pending'
 
             switch ($readinessState.ActionReason) {
-                'Error' { $taskResult = 'Skipped - Error' }
-                'Account enabled' { $taskResult = 'Skipped - Not allowed' }
-                default { $taskResult = 'Skipped' }
+                'Error' { $taskResultAssignedLicense = 'Skipped - Error' }
+                'Account enabled' { $taskResultAssignedLicense = 'Skipped - Not allowed' }
+                default { $taskResultAssignedLicense = 'Skipped' }
             }
 
             $taskResultDetail = $($readinessState.ReadinessNote)
@@ -265,36 +278,36 @@ function Invoke-MLRUserLicenseRemoval {
         # If readiness action state is 'Remove'
         if ($readinessState.Action -eq 'Remove') {
             if ($readinessState.AssignedLicense) {
-                $removeAssignedLicenseResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",")
+                $removeAssignedLicenseResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",") -TestMode:$TestMode
                 if ($removeAssignedLicenseResult -eq 'Successful') {
-                    $taskStatusPostOp = 'Completed'
-                    $taskResult = "Completed - Direct license removed"
-                    $taskResultDetail = "Direct license removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
+                    $taskStatusAssignedLicensePostop = 'Completed'
+                    $taskResultAssignedLicense = "Completed - Direct license removed"
+                    $taskResultDetailAssignedLicense = "Direct license removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
                     $user.RemovedAssignedLicense = $readinessState.AssignedLicense
                     $user.RemovedAssignedLicenseName = $readinessState.AssignedLicenseName
                     $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
                 }
                 else {
-                    $taskStatusPostOp = $readinessState.TaskStatusPreOp
-                    $taskResult = "Failed - Error"
-                    $taskResultDetail = $removeAssignedLicenseResult -replace "Failed - ", ""
+                    $taskStatusAssignedLicensePostop = $readinessState.TaskStatusPreOp
+                    $taskResultAssignedLicense = "Failed - Error"
+                    $taskResultDetailAssignedLicense = $removeAssignedLicenseResult -replace "Failed - ", ""
                 }
             }
             if ($IncludeInheritedLicense -and $readinessState.InheritedLicense) {
-                $removeInheritedLicenseResult = Remove-MLRUserLicenseInherited -UserId $readinessState.UserId -LicenseGroupId ($readinessState.InheritedLicense -split ",")
+                $removeInheritedLicenseResult = Remove-MLRUserLicenseInherited -UserId $readinessState.UserId -LicenseGroupId ($readinessState.InheritedLicense -split ",") -TestMode:$TestMode
                 if ($removeInheritedLicenseResult.Status -eq 'Successful') {
-                    $taskStatusPostOpInherited = 'Completed'
-                    $taskResultInherited = "Completed - Inherited license removed"
-                    $taskResultDetailInherited = "Direct license removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
+                    $taskStatusInheritedLicensePostop = 'Completed'
+                    $taskResultInheritedLicense = "Completed - Inherited license removed"
+                    $taskResultDetailInheritedLicense = "Inherited license removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
                     # $removedInheritedLicenseId = $removeInheritedLicenseResult.RemovedLicenseName -join ","
-                    $user.RemovedInheritedLicense = $removeInheritedLicenseResult.RemovedLicense -join ","
-                    $user.RemovedInheritedLicenseName = $removeInheritedLicenseResult.RemovedLicense -join ","
+                    $user.RemovedInheritedLicense = $removeInheritedLicenseResult.RemovedLicenseId -join ","
+                    $user.RemovedInheritedLicenseName = $removeInheritedLicenseResult.RemovedLicenseName -join ","
                     $completedDateInherited = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
                 }
-                else {
-                    $taskStatusPostOpInherited = $readinessState.TaskStatusPreOp
-                    $taskResultInherited = "Failed - Error"
-                    $taskResultDetailInherited = ($removeInheritedLicenseResult.Error -join ",") -replace "Failed - ", ""
+                elseif ($removeInheritedLicenseResult.Status -eq 'Skipped') {
+                    $taskStatusInheritedLicensePostop = $removeInheritedLicenseResult.Status
+                    $taskResultInherited = "Skipped - (see details)"
+                    $taskResultDetailInherited = ($removeInheritedLicenseResult.SkippedNotes -join ",")
                 }
             }
         }
@@ -309,31 +322,32 @@ function Invoke-MLRUserLicenseRemoval {
 
             $fields = @{
                 fields = @{
-                    "Status"                      = $taskStatusPostOp
-                    "Notes"                       = $taskResultDetail
+                    "Status"                      = $taskStatusAssignedLicensePostop
+                    "Notes"                       = $taskResultDetailAssignedLicense
                     "$($completedDateColumnName)" = $completedDate
-                    "$($lastMessageColumnName)"   = $taskResultDetail
+                    "$($lastMessageColumnName)"   = $taskResultDetailAssignedLicense
                 }
             }
 
             Write-Debug "Updating SPO List item for $($user.TaskUsername)"
-            $null = Invoke-MgGraphRequest `
-                -Method PATCH `
-                -Uri "https://graph.microsoft.com/v1.0/sites/$($user.TaskSiteId)/lists/$($user.TaskListId)/items/$($user.TaskListItemId)" `
-                -Body $fields `
-                -ContentType "application/json" `
-                -ErrorAction Stop
-
-            $user.TaskResult = $taskResult
-            $user.TaskResultDetail = $taskResultDetail
-            $user.TaskStatusPostOp = $taskStatusPostOp
+            if (-not $TestMode) {
+                $null = Invoke-MgGraphRequest `
+                    -Method PATCH `
+                    -Uri "https://graph.microsoft.com/v1.0/sites/$($user.TaskSiteId)/lists/$($user.TaskListId)/items/$($user.TaskListItemId)" `
+                    -Body $fields `
+                    -ContentType "application/json" `
+                    -ErrorAction Stop
+            }
+            $user.TaskResultAssignedLicense = $taskResultAssignedLicense
+            $user.TaskResultDetailAssignedLicense = $taskResultDetailAssignedLicense
+            $user.TaskStatusAssignedLicensePostop = $taskStatusAssignedLicensePostop
             $user.TaskCompletedDate = $(if ($completedDate) { (Get-Date $completedDate) })
         }
         catch {
             SayError $_.Exception.Message
-            $user.TaskResult = 'Failed - Error'
-            $user.TaskResultDetail = $_.Exception.Message
-            $user.TaskStatusPostOp = $readinessState.TaskStatusPreOp
+            $user.TaskResultAssignedLicense = 'Failed - Error'
+            $user.TaskResultDetailAssignedLicense = $_.Exception.Message
+            $user.TaskStatusAssignedLicensePostop = $readinessState.TaskStatusPreOp
             $user.TaskCompletedDate = $null
         }
         $counter++
@@ -352,9 +366,15 @@ function Invoke-MLRUserLicenseRemoval {
     try {
 
         $htmlContent = Write-MLRHtmlReport -InputObject $usersForLicenseRemoval -CustomTitle $reportTitle -CustomOrganization $organizationName
-        $htmlContent | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
-        # $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
-        SayInfo "[$($MyInvocation.MyCommand.Name)]: HTML report file saved to $($htmlFileName)."
+        Start-Sleep -Seconds 1
+        if (-not $htmlContent) {
+            SayWarning "HTML content failed to generate."
+        }
+        else {
+            $htmlContent | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
+            # $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
+            SayInfo "[$($MyInvocation.MyCommand.Name)]: HTML report file saved to $($htmlFileName)."
+        }
     }
     catch {
         SayError "[$($MyInvocation.MyCommand.Name)]: Failed to save the HTML output file."
