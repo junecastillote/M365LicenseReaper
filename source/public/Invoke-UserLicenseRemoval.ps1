@@ -255,8 +255,8 @@ function Invoke-MLRUserLicenseRemoval {
 
         # If readiness action state is 'Remove'
         if ($readinessState.Action -eq 'Remove') {
-            $removeResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",")
-            if ($removeResult -eq 'Successful') {
+            $removeAssignedLicenseResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",")
+            if ($removeAssignedLicenseResult -eq 'Successful') {
                 $taskStatusPostOp = 'Completed'
                 $taskResult = "Completed - License removed"
                 $taskResultDetail = "License removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
@@ -267,7 +267,7 @@ function Invoke-MLRUserLicenseRemoval {
             else {
                 $taskStatusPostOp = $readinessState.TaskStatusPreOp
                 $taskResult = "Failed - Error"
-                $taskResultDetail = $removeResult -replace "Failed - ", ""
+                $taskResultDetail = $removeAssignedLicenseResult -replace "Failed - ", ""
             }
         }
 
