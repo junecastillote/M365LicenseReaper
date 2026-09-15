@@ -70,3 +70,35 @@ function IsMLRGraphConnected {
 }
 
 
+function Get-GroupFromCache {
+    param(
+        $id
+    )
+    ($global:mlrGroupCache | Where-Object { $_.Id -eq $id })
+
+}
+
+function Get-LicenseNameFromCache {
+    [CmdletBinding()]
+    param (
+        [guid[]]$skuId
+    )
+
+    try {
+        # Get M365 Product ID table
+        $skuTable = Get-MLRM365ProductIdTable -ErrorAction Stop
+    }
+    catch {
+        SayError "[$($MyInvocation.MyCommand.Name)]: There was an error getting the Sku Table from Microsoft Learn. The license names will not be resolved to friendly names."
+    }
+
+    foreach ($id in $skuid) {
+        if ($skuName = ($skuTable | Where-Object { $_.SkuId -eq $id }).SkuName) {
+            $skuName
+        }
+        # If friendly name isnot found, get SkuPartNumber instead
+        else {
+            ($global:mlrSubscribedSku | Where-Object { $_.SkuId -eq $id }).SkuPartNumber
+        }
+    }
+}
