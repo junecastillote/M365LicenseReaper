@@ -339,7 +339,7 @@ function Invoke-MLRUserLicenseRemoval {
                     -ErrorAction Stop
             }
             $user.TaskResultAssignedLicense = $taskResultAssignedLicense
-            $user.TaskResultDetailAssignedLicense = $taskResultDetailAssignedLicense
+            $user.TaskResultDetailAssignedLicense = $(if ($readinessState.Action -ne 'Remove') { $readinessState.ReadinessNote }else { $taskResultDetailAssignedLicense })
             $user.TaskStatusAssignedLicensePostop = $taskStatusAssignedLicensePostop
             $user.TaskCompletedDate = $(if ($completedDate) { (Get-Date $completedDate) })
         }
