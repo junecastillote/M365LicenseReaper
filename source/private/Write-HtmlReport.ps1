@@ -42,35 +42,71 @@ function Write-MLRHtmlReport {
         $htmlRow += '<td><a href="' + $lineItem.TaskListItemURL + '" target="_blank">' + $lineItem.TaskTicket + '</a>' + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskUsername + '</td>'
 
-        $htmlRow += '<td class="' + ($lineItem.TaskStatusAssignedLicensePostop.ToLower()) + '">' + $lineItem.TaskResultAssignedLicense + '</td>'
-        $htmlRow += '<td class="' + ($lineItem.TaskStatusAssignedLicensePostop.ToLower()) + '">' + $lineItem.TaskResultDetailAssignedLicense + '</td>'
-        # $htmlRow += '<td>' + ($lineItem.RemovedAssignedLicenseName -replace ',', ';<br>') + '</td>'
+        $htmlRow += '<td>'
+        $htmlRow += '<table style="border-collapse:collapse; border:none;">'
+
         if ($lineItem.RemovedAssignedLicenseName) {
-            $htmlRow += '<td><strong>Direct:</strong><br>' + ($lineItem.RemovedAssignedLicenseName -replace ',', ';<br>') + '</td>'
-        }
-        else {
-            $htmlRow += '<td></td>'
+            # $htmlRow += '<tr>'
+            # $htmlRow += '<td style="border: none; padding-left: 0%;"><strong>Direct:</strong></td>'
+            # $htmlRow += '</tr>'
+
+            $htmlRow += '<tr>'
+            $htmlRow += '<td class="' + ($lineItem.TaskStatusAssignedLicensePostop.ToLower()) + '">' + ($lineItem.TaskResultAssignedLicense -split ' - ')[-1] + '</td>'
+            $htmlRow += '</tr>'
         }
 
-        # $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd HH:mm:ss') + '</td>'
-        $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd') + '</td>'
-        $htmlRow += '<td>' + $lineItem.TaskDueDate.ToString('yyyy-MM-dd') + '</td>'
-        $htmlRow += '<td>' + $(if ($lineItem.TaskCompletedDate) { $lineItem.TaskCompletedDate.ToString('yyyy-MM-dd HH:mm:ss') }) + '</td>'
-        if ($lineItem.TaskCreatedByUserEmail) {
-            $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser) ($($lineItem.TaskCreatedByUserEmail))" + '</td>'
-        }
-        else {
-            $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser)" + '</td>'
+        if ($lineItem.RemovedInheritedLicenseName) {
+            # $htmlRow += '<tr>'
+            # $htmlRow += '<td style="border: none; padding-left: 0%;"><strong>Inherited:</strong></td>'
+            # $htmlRow += '</tr>'
+
+            $htmlRow += '<tr>'
+            $htmlRow += '<td class="' + ($lineItem.TaskStatusInheritedLicensePostop.ToLower()) + '">' + ($lineItem.TaskResultInheritedLicense -split ' - ')[-1] + '</td>'
+            $htmlRow += '</tr>'
         }
 
-        $htmlRow += "</tr>"
+        if ($lineItem.TaskStatusAssignedLicensePostop -eq 'Canceled') {
+            # $htmlRow += '<tr>'
+            # $htmlRow += '<td style="border: none; padding-left: 0%;"><strong>Inherited:</strong></td>'
+            # $htmlRow += '</tr>'
+
+            $htmlRow += '<tr>'
+            $htmlRow += '<td class="' + ($lineItem.TaskStatusAssignedLicensePostop.ToLower()) + '">' + ($lineItem.TaskResultAssignedLicense -split ' - ')[-1] + '</td>'
+        $htmlRow += '</tr>'
     }
 
-    $htmlContent = $htmlContent -replace `
-        "vTableRows", ($htmlRow -join "`n") -replace `
-        "vOrganization", $reportOrganization -replace `
-        "vReportTitle", $reportTitle -replace `
-        "vComputerName", $(hostname) -replace `
-        "vModuleInfo", $('<a href="' + $module.ProjectUri + '">' + "$($module.Name) v$($module.Version)" + '</a>')
-    ($htmlContent -join "`n")
+    $htmlRow += '</table>'
+    $htmlRow += '</td>'
+
+    # $htmlRow += '<td class="' + ($lineItem.TaskStatusAssignedLicensePostop.ToLower()) + '">' + $lineItem.TaskResultAssignedLicense + '</td>'
+    $htmlRow += '<td class="' + ($lineItem.TaskStatusAssignedLicensePostop.ToLower()) + '">' + $lineItem.TaskResultDetailAssignedLicense + '</td>'
+    # $htmlRow += '<td>' + ($lineItem.RemovedAssignedLicenseName -replace ',', ';<br>') + '</td>'
+    if ($lineItem.RemovedAssignedLicenseName) {
+        $htmlRow += '<td><strong>Direct:</strong><br>' + ($lineItem.RemovedAssignedLicenseName -replace ',', ';<br>') + '</td>'
+    }
+    else {
+        $htmlRow += '<td></td>'
+    }
+
+    # $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd HH:mm:ss') + '</td>'
+    $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd') + '</td>'
+    $htmlRow += '<td>' + $lineItem.TaskDueDate.ToString('yyyy-MM-dd') + '</td>'
+    $htmlRow += '<td>' + $(if ($lineItem.TaskCompletedDate) { $lineItem.TaskCompletedDate.ToString('yyyy-MM-dd HH:mm:ss') }) + '</td>'
+    if ($lineItem.TaskCreatedByUserEmail) {
+        $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser) ($($lineItem.TaskCreatedByUserEmail))" + '</td>'
+    }
+    else {
+        $htmlRow += '<td>' + "$($lineItem.TaskCreatedByUser)" + '</td>'
+    }
+
+    $htmlRow += "</tr>"
+}
+
+$htmlContent = $htmlContent -replace `
+    "vTableRows", ($htmlRow -join "`n") -replace `
+    "vOrganization", $reportOrganization -replace `
+    "vReportTitle", $reportTitle -replace `
+    "vComputerName", $(hostname) -replace `
+    "vModuleInfo", $('<a href="' + $module.ProjectUri + '">' + "$($module.Name) v$($module.Version)" + '</a>')
+($htmlContent -join "`n")
 }
