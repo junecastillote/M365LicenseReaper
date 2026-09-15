@@ -9,11 +9,19 @@ function Remove-MLRUserLicenseInherited {
         [guid[]]
         $LicenseGroupId,
 
-        # Parameter help description
         [Parameter()]
         [switch]
-        $TestMode
+        $TestMode,
+
+        [Parameter()]
+        [switch]
+        $ForceRefreshGroupCache
     )
+
+    $LicenseGroupId = $LicenseGroupId | Select-Object -Unique
+
+    # $groupProperties = @('id', 'assignedLicenses', 'displayname')
+    New-GBLCache -ForceRefreshGroupCache:$ForceRefreshGroupCache
 
     $errors = @()
     $removedLicense = @()
@@ -24,9 +32,9 @@ function Remove-MLRUserLicenseInherited {
     $errorGroupName = @()
     $skippedGroup = @()
     $skippedGroupName = @()
-    $groupName = @()
+    $groupNameCollection = @()
     $notes = @()
-    $skippedNotes = @()
+    $skippedGroupNotes = @()
 
     foreach ($groupId in $LicenseGroupId) {
         $groupName = $((Get-GroupFromCache $groupId).DisplayName)
@@ -46,7 +54,7 @@ function Remove-MLRUserLicenseInherited {
                 Write-Debug "[$UserId] is not a member of [$($groupName)]"
                 $skippedGroup += $groupId
                 # $notes += "Not a member of [$($groupName)]"
-                $skippedNotes += "Not a member of [$($groupName)]"
+                $skippedGroupNotes += "Not a member of [$($groupName)]"
             }
         }
         catch {
@@ -58,7 +66,8 @@ function Remove-MLRUserLicenseInherited {
 
     if ($TestMode) { $notes += 'Test mode. No changes.' }
 
-    $groupName += (($LicenseGroupId | ForEach-Object { Get-GroupFromCache $_ }).DisplayName)
+    $groupNameCollection += (($LicenseGroupId | ForEach-Object { Get-GroupFromCache $_ }).DisplayName)
+
     if ($removedGroup) {
         $removedGroupName += (($removedGroup | ForEach-Object { Get-GroupFromCache $_ }).DisplayName)
         $removedLicense = $(
@@ -80,13 +89,14 @@ function Remove-MLRUserLicenseInherited {
     [pscustomobject]([ordered]@{
             UserId             = $UserId
             GroupId            = $LicenseGroupId
-            GroupName          = $groupName
+            GroupName          = $groupNameCollection
             RemovedGroupId     = $removedGroup
             RemovedGroupName   = $removedGroupName
             RemovedLicenseId   = $removedLicense
             RemovedLicenseName = $removedLicenseName
             SkippedGroupId     = $skippedGroup
             SkippedGroupName   = $skippedGroupName
+            SkippedGroupNotes  = $skippedGroupNotes
             ErrorGroup         = $errorGroup
             ErrorGroupName     = $errorGroupName
             Error              = $errors
@@ -96,7 +106,7 @@ function Remove-MLRUserLicenseInherited {
                 if ($errorGroup -or $errors) {
                     'Failed'
                 }
-                elseif ($removedGroup.Count -lt 1) {
+                elseif ($removedGroup.Count -lt 1 -and $skippedGroup.Count -gt 0) {
                     'Skipped'
                 }
                 else {
