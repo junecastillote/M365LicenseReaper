@@ -70,6 +70,31 @@ function IsMLRGraphConnected {
 }
 
 
+function New-GBLCache {
+    [CmdletBinding()]
+    param (
+        [Parameter()]
+        [switch]
+        $ForceRefreshGroupCache
+    )
+
+    $groupProperties = @('id', 'assignedLicenses', 'displayname')
+
+    if ($ForceRefreshGroupCache) {
+        Write-Debug "Force creating group-based licensing list cache in session..."
+        $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
+    }
+    else {
+        if (-not $Global:mlrGroupCache) {
+            Write-Debug "Creating group-based licensing list cache in session..."
+            $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
+        }
+        else {
+            Write-Debug "Group cache exists in session..."
+        }
+    }
+}
+
 function Get-GroupFromCache {
     param(
         $id

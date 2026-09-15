@@ -34,19 +34,21 @@ function Get-MLRUserAccountState {
         Write-Debug "Switch -IncludeInheritedLicense used."
         Write-Debug "  - The inherited licenses assigned by group will be included."
 
-        if ($ForceRefreshGroupCache) {
-            Write-Debug "Force creating group-based licensing list cache in session..."
-            $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
-        }
-        else {
-            if (-not $Global:mlrGroupCache) {
-                Write-Debug "Creating group-based licensing list cache in session..."
-                $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
-            }
-            else {
-                Write-Debug "Group cache exists in session..."
-            }
-        }
+        New-GBLCache -ForceRefreshGroupCache:$ForceRefreshGroupCache
+
+        # if ($ForceRefreshGroupCache) {
+        #     Write-Debug "Force creating group-based licensing list cache in session..."
+        #     $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
+        # }
+        # else {
+        #     if (-not $Global:mlrGroupCache) {
+        #         Write-Debug "Creating group-based licensing list cache in session..."
+        #         $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
+        #     }
+        #     else {
+        #         Write-Debug "Group cache exists in session..."
+        #     }
+        # }
     }
 
     if (-not $Global:mlrSubscribedSku) {
