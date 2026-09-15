@@ -1,5 +1,6 @@
 function Remove-MLRUserLicenseAssignment {
     [CmdletBinding()]
+    [Alias('Remove-MLRUserLicenseAssigned')]
     param (
         [Parameter(Mandatory)]
         [string]
