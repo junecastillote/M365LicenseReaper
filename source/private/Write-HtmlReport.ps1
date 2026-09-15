@@ -44,7 +44,14 @@ function Write-MLRHtmlReport {
 
         $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskResult + '</td>'
         $htmlRow += '<td class="' + ($lineItem.TaskStatusPostOp.ToLower()) + '">' + $lineItem.TaskResultDetail + '</td>'
-        $htmlRow += '<td>' + ($lineItem.AssignedLicenseName -replace ',', ';<br>') + '</td>'
+        # $htmlRow += '<td>' + ($lineItem.RemovedAssignedLicenseName -replace ',', ';<br>') + '</td>'
+        if ($lineItem.RemovedAssignedLicenseName) {
+            $htmlRow += '<td><strong>Direct:</strong><br>' + ($lineItem.RemovedAssignedLicenseName -replace ',', ';<br>') + '</td>'
+        }
+        else {
+            $htmlRow += '<td></td>'
+        }
+
         # $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd HH:mm:ss') + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskCreatedDate.ToString('yyyy-MM-dd') + '</td>'
         $htmlRow += '<td>' + $lineItem.TaskDueDate.ToString('yyyy-MM-dd') + '</td>'
