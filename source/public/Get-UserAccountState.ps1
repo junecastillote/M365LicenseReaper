@@ -11,8 +11,12 @@ function Get-MLRUserAccountState {
 
         # Parameter help description
         [Parameter()]
+        [bool]
+        $IncludeInheritedLicense = $true,
+
+        [Parameter()]
         [switch]
-        $IncludeInheritedLicense
+        $ForceRefreshGroupCache
     )
     # Write-Debug $MyInvocation.MyCommand.Name
     Write-Debug "Processing - $($Username)"
@@ -24,15 +28,24 @@ function Get-MLRUserAccountState {
     $actionReason = ''
     $readinessNote = ''
 
+    $groupProperties = @('id', 'assignedLicenses', 'displayname')
+
     if ($IncludeInheritedLicense) {
         Write-Debug "Switch -IncludeInheritedLicense used."
         Write-Debug "  - The inherited licenses assigned by group will be included."
-        if (-not $Global:mlrGroupCache) {
-            Write-Debug "Creating group cache in session..."
-            $Global:mlrGroupCache = @()
+
+        if ($ForceRefreshGroupCache) {
+            Write-Debug "Force creating group-based licensing list cache in session..."
+            $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
         }
         else {
-            Write-Debug "Group cache exists in session..."
+            if (-not $Global:mlrGroupCache) {
+                Write-Debug "Creating group-based licensing list cache in session..."
+                $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
+            }
+            else {
+                Write-Debug "Group cache exists in session..."
+            }
         }
     }
 
@@ -44,13 +57,13 @@ function Get-MLRUserAccountState {
         Write-Debug "SubscribedSku cache exists in session..."
     }
 
-    try {
-        # Get M365 Product ID table
-        $skuTable = Get-MLRM365ProductIdTable -ErrorAction Stop
-    }
-    catch {
-        SayError "[$($MyInvocation.MyCommand.Name)]: There was an error getting the Sku Table from Microsoft Learn. The license names will not be resolved to friendly names."
-    }
+    # try {
+    #     # Get M365 Product ID table
+    #     $skuTable = Get-MLRM365ProductIdTable -ErrorAction Stop
+    # }
+    # catch {
+    #     SayError "[$($MyInvocation.MyCommand.Name)]: There was an error getting the Sku Table from Microsoft Learn. The license names will not be resolved to friendly names."
+    # }
 
     try {
         $properties = @(
@@ -120,12 +133,8 @@ function Get-MLRUserAccountState {
             foreach ($id in $licenseGroupIds) {
                 if (-not ($groupName = ($Global:mlrGroupCache | Where-Object { $_.ID -eq $id }).DisplayName)) {
                     Write-Debug "Group [$($id)] not found in cache. Retrieving group online."
-                    $group = Get-MgGroup -GroupId $id -Property Id, DisplayName, GroupTypes
-                    $Global:mlrGroupCache += [pscustomobject]@{
-                        Id          = $group.Id
-                        DisplayName = $group.DisplayName
-                        GroupTypes  = $group.GroupTypes
-                    }
+                    $group = Get-MgGroup -GroupId $id -Property $groupProperties | Select-Object $groupProperties
+                    $Global:mlrGroupCache.Add($group)
                     $groupName = $group.DisplayName
                 }
                 else {
@@ -172,49 +181,17 @@ function Get-MLRUserAccountState {
             # $assignedLicense = @()
             $assignedLicenseName = @()
             $inheritedLicenseName = @()
+            # $licenseNames = (Get-LicenseNameFromCache $userLicenseCollection.SkuId -Debug:$false)
             foreach ($license in $userLicenseCollection) {
-                # If M365 Product ID table exists
-                if ($skuTable) {
-                    # Find the friendly name
-                    $skuName = ($skuTable | Where-Object { $_.SkuId -eq $license.SkuId }).SkuName
-
-                    # If the friendly name is found
-                    if ($skuName) {
-                        if ($license.AssignedByGroup) {
-                            # If inherited by group
-                            $inheritedLicenseName += $skuName
-                        }
-                        else {
-                            # If directly assigned
-                            $assignedLicenseName += $skuName
-                        }
-                    }
-                    # If the friendly name is NOT found
-                    else {
-                        $assignedLicenseName += "$($license.SkuPartNumber)"
-                        if ($license.AssignedByGroup) {
-                            # If inherited by group
-                            $inheritedLicenseName += "$($license.SkuPartNumber)"
-                        }
-                        else {
-                            # If directly assigned
-                            $assignedLicenseName += "$($license.SkuPartNumber)"
-                        }
-                    }
+                $skuName = Get-LicenseNameFromCache $license.SkuId -Debug:$false
+                if ($license.AssignedByGroup) {
+                    # If inherited by group
+                    $inheritedLicenseName += $skuName
                 }
-                # If M365 Product ID table does not exist
                 else {
-
-                    if ($license.AssignedByGroup) {
-                        # If inherited by group
-                        $inheritedLicenseName += "$($license.SkuPartNumber)"
-                    }
-                    else {
-                        # If directly assigned
-                        $assignedLicenseName += "$($license.SkuPartNumber)"
-                    }
+                    # If directly assigned
+                    $assignedLicenseName += $skuName
                 }
-
             }
             $assignedLicense = ($userLicenseCollection | Where-Object { -not $_.AssignedByGroup }).SkuId -join ","
             $assignedLicenseName = $assignedLicenseName -join ","
