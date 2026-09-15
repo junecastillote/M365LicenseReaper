@@ -43,7 +43,11 @@ function Invoke-MLRUserLicenseRemoval {
         [parameter()]
         [ValidateNotNullOrEmpty()]
         [string]
-        $CustomOrganization
+        $CustomOrganization,
+
+        [Parameter()]
+        [bool]
+        $IncludeInheritedLicense = $true
     )
 
     $module = ThisModule
@@ -206,8 +210,10 @@ function Invoke-MLRUserLicenseRemoval {
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusPostOp -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResult -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResultDetail -Value ''
-    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicense -Value ''
-    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedLicenseName -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedAssignedLicense -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedAssignedLicenseName -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedInheritedLicense -Value ''
+    $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name RemovedInheritedLicenseName -Value ''
 
     $lastMessageColumnName = ($Global:mlrTaskList.Columns.Columns | Where-Object { $_.DisplayName -eq 'Last Message' }).InternalName
     $completedDateColumnName = ($Global:mlrTaskList.Columns.Columns | Where-Object { $_.DisplayName -eq 'Completed Date' }).InternalName
@@ -224,8 +230,11 @@ function Invoke-MLRUserLicenseRemoval {
         $taskResultDetail = ''
         $completedDate = $null
 
+        $removeAssignedLicenseResult = ''
+        $removeInheritedLicenseResult = ''
+
         # Get the user account's readiness state for license removal
-        $readinessState = Get-MLRUserAccountState -Username $user.TaskUsername -SkipIfEnabled:$SkipIfEnabled
+        $readinessState = Get-MLRUserAccountState -Username $user.TaskUsername -SkipIfEnabled:$SkipIfEnabled -IncludeInheritedLicense:$IncludeInheritedLicense
 
         $user.TaskAction = $readinessState.Action
         $user.AssignedLicense = $readinessState.AssignedLicense
@@ -255,19 +264,38 @@ function Invoke-MLRUserLicenseRemoval {
 
         # If readiness action state is 'Remove'
         if ($readinessState.Action -eq 'Remove') {
-            $removeAssignedLicenseResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",")
-            if ($removeAssignedLicenseResult -eq 'Successful') {
-                $taskStatusPostOp = 'Completed'
-                $taskResult = "Completed - License removed"
-                $taskResultDetail = "License removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
-                $user.RemovedLicense = $readinessState.AssignedLicense
-                $user.RemovedLicenseName = $readinessState.AssignedLicenseName
-                $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            if ($readinessState.AssignedLicense) {
+                $removeAssignedLicenseResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",")
+                if ($removeAssignedLicenseResult -eq 'Successful') {
+                    $taskStatusPostOp = 'Completed'
+                    $taskResult = "Completed - Direct license removed"
+                    $taskResultDetail = "Direct license removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
+                    $user.RemovedAssignedLicense = $readinessState.AssignedLicense
+                    $user.RemovedAssignedLicenseName = $readinessState.AssignedLicenseName
+                    $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+                }
+                else {
+                    $taskStatusPostOp = $readinessState.TaskStatusPreOp
+                    $taskResult = "Failed - Error"
+                    $taskResultDetail = $removeAssignedLicenseResult -replace "Failed - ", ""
+                }
             }
-            else {
-                $taskStatusPostOp = $readinessState.TaskStatusPreOp
-                $taskResult = "Failed - Error"
-                $taskResultDetail = $removeAssignedLicenseResult -replace "Failed - ", ""
+            if ($IncludeInheritedLicense -and $readinessState.InheritedLicense) {
+                $removeInheritedLicenseResult = Remove-MLRUserLicenseInherited -UserId $readinessState.UserId -LicenseGroupId ($readinessState.InheritedLicense -split ",")
+                if ($removeInheritedLicenseResult.Status -eq 'Successful') {
+                    $taskStatusPostOpInherited = 'Completed'
+                    $taskResultInherited = "Completed - Inherited license removed"
+                    $taskResultDetailInherited = "Direct license removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
+                    # $removedInheritedLicenseId = $removeInheritedLicenseResult.RemovedLicenseName -join ","
+                    $user.RemovedInheritedLicense = $removeInheritedLicenseResult.RemovedLicense -join ","
+                    $user.RemovedInheritedLicenseName = $removeInheritedLicenseResult.RemovedLicense -join ","
+                    $completedDateInherited = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+                }
+                else {
+                    $taskStatusPostOpInherited = $readinessState.TaskStatusPreOp
+                    $taskResultInherited = "Failed - Error"
+                    $taskResultDetailInherited = ($removeInheritedLicenseResult.Error -join ",") -replace "Failed - ", ""
+                }
             }
         }
 
