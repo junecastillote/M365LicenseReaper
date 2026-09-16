@@ -698,16 +698,12 @@ function Write-MLRHtmlReport {
     )
 
     $htmlContent = $htmlContent -replace `
-        'vTableRows',
-    ($htmlRowCollection -join "`n") -replace `
-        'vOrganization',
-    $reportOrganizationHtml -replace `
-        'vReportTitle',
-    $reportTitleHtml -replace `
-        'vComputerName',
-    $computerNameHtml -replace `
-        'vModuleInfo',
-    $moduleInfoHtml
+        'vTableRows', ($htmlRowCollection -join "`n") -replace `
+        'vOrganization', $reportOrganizationHtml -replace `
+        'vReportTitle', $reportTitleHtml -replace `
+        'vComputerName', $computerNameHtml -replace `
+        'vModuleInfo', $moduleInfoHtml -replace `
+        'vPsHostInfo', $PSVersionTable.PSVersion.ToString()
 
     return (
         $htmlContent -join "`n"

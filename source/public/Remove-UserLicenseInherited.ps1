@@ -32,6 +32,9 @@ function Remove-MLRUserLicenseInherited {
     $simulatedGroup = @()
     $simulatedGroupName = @()
 
+    $simulatedLicense = @()
+    $simulatedLicenseName = @()
+
     $skippedGroup = @()
     $skippedGroupName = @()
     $skippedGroupNotes = @()
@@ -130,6 +133,34 @@ function Remove-MLRUserLicenseInherited {
     $removedGroup.Count +
     $skippedGroup.Count
 
+    if ($simulatedGroup.Count -gt 0) {
+
+        foreach ($groupId in $simulatedGroup) {
+
+            $group = Get-GroupFromCache -Id $groupId
+
+            if ($group) {
+                $simulatedLicense += @(
+                    $group.AssignedLicenses.SkuId
+                )
+            }
+        }
+
+        if ($simulatedLicense.Count -gt 0) {
+
+            $simulatedLicense = @(
+                $simulatedLicense |
+                Select-Object -Unique
+            )
+
+            $simulatedLicenseName = @(
+                Get-LicenseNameFromCache `
+                    -SkuId $simulatedLicense `
+                    -Debug:$false
+            )
+        }
+    }
+
     $status = if (
         $TestMode -and
         $simulatedGroup.Count -gt 0
@@ -159,29 +190,32 @@ function Remove-MLRUserLicenseInherited {
     }
 
     return [PSCustomObject]([ordered]@{
-            UserId             = $UserId
-            GroupId            = @($LicenseGroupId)
-            GroupName          = @($groupNameCollection)
+            UserId               = $UserId
+            GroupId              = @($LicenseGroupId)
+            GroupName            = @($groupNameCollection)
 
-            Status             = $status
+            Status               = $status
 
-            RemovedGroupId     = @($removedGroup)
-            RemovedGroupName   = @($removedGroupName)
-            RemovedLicenseId   = @($removedLicense)
-            RemovedLicenseName = @($removedLicenseName)
+            RemovedGroupId       = @($removedGroup)
+            RemovedGroupName     = @($removedGroupName)
+            RemovedLicenseId     = @($removedLicense)
+            RemovedLicenseName   = @($removedLicenseName)
 
-            SimulatedGroupId   = @($simulatedGroup)
-            SimulatedGroupName = @($simulatedGroupName)
+            SimulatedGroupId     = @($simulatedGroup)
+            SimulatedGroupName   = @($simulatedGroupName)
 
-            SkippedGroupId     = @($skippedGroup)
-            SkippedGroupName   = @($skippedGroupName)
-            SkippedGroupNotes  = @($skippedGroupNotes)
+            SimulatedLicenseId   = @($simulatedLicense)
+            SimulatedLicenseName = @($simulatedLicenseName)
 
-            ErrorGroupId       = @($errorGroup)
-            ErrorGroupName     = @($errorGroupName)
-            Error              = @($errors)
+            SkippedGroupId       = @($skippedGroup)
+            SkippedGroupName     = @($skippedGroupName)
+            SkippedGroupNotes    = @($skippedGroupNotes)
 
-            Note               = @($notes)
-            TestMode           = [bool]$TestMode
+            ErrorGroupId         = @($errorGroup)
+            ErrorGroupName       = @($errorGroupName)
+            Error                = @($errors)
+
+            Note                 = @($notes)
+            TestMode             = [bool]$TestMode
         })
 }
