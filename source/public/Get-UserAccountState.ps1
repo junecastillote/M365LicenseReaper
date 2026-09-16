@@ -18,7 +18,7 @@ function Get-MLRUserAccountState {
         [switch]
         $ForceRefreshGroupCache
     )
-    # Write-Debug $MyInvocation.MyCommand.Name
+
     Write-Debug "Processing - $($Username)"
 
     $today = (Get-Date)
@@ -36,19 +36,6 @@ function Get-MLRUserAccountState {
 
         New-GBLCache -ForceRefreshGroupCache:$ForceRefreshGroupCache
 
-        # if ($ForceRefreshGroupCache) {
-        #     Write-Debug "Force creating group-based licensing list cache in session..."
-        #     $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
-        # }
-        # else {
-        #     if (-not $Global:mlrGroupCache) {
-        #         Write-Debug "Creating group-based licensing list cache in session..."
-        #         $Global:mlrGroupCache = [System.Collections.ArrayList]@(Get-MgGroup -Property $groupProperties -Filter "assignedLicenses/any()" | Select-Object $groupProperties)
-        #     }
-        #     else {
-        #         Write-Debug "Group cache exists in session..."
-        #     }
-        # }
     }
 
     if (-not $Global:mlrSubscribedSku) {
@@ -58,14 +45,6 @@ function Get-MLRUserAccountState {
     else {
         Write-Debug "SubscribedSku cache exists in session..."
     }
-
-    # try {
-    #     # Get M365 Product ID table
-    #     $skuTable = Get-MLRM365ProductIdTable -ErrorAction Stop
-    # }
-    # catch {
-    #     SayError "[$($MyInvocation.MyCommand.Name)]: There was an error getting the Sku Table from Microsoft Learn. The license names will not be resolved to friendly names."
-    # }
 
     try {
         $properties = @(
