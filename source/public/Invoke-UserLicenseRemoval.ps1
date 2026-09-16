@@ -323,7 +323,8 @@ function Invoke-MLRUserLicenseRemoval {
                     $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
                 }
                 else {
-                    $taskStatusInheritedLicensePostop = $removeInheritedLicenseResult.Status
+                    # $taskStatusInheritedLicensePostop = $removeInheritedLicenseResult.Status
+                    $taskStatusInheritedLicensePostop = $readinessState.TaskStatusPreOp
                     $taskResultInheritedLicense = "Failed - (see details)"
                     $taskResultDetailInheritedLicense = ($removeInheritedLicenseResult.Error -join ",")
                     $user.RemovedInheritedLicense = ""
