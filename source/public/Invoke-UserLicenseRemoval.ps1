@@ -411,8 +411,37 @@ function Invoke-MLRUserLicenseRemoval {
                         $taskResultAssignedLicense =
                         'Simulated - Direct license removal'
 
+                        $detailCollection = @(
+                            $removeAssignedLicenseResult.Note
+                        )
+
+                        if (
+                            -not[string]::IsNullOrWhiteSpace(
+                                $readinessState.AssignedLicenseName
+                            )
+                        ) {
+                            $directLicenseNameCollection = @(
+                                $readinessState.AssignedLicenseName -split ',' |
+                                Where-Object {
+                                    -not[string]::IsNullOrWhiteSpace($_)
+                                } |
+                                ForEach-Object {
+                                    $_.Trim()
+                                }
+                            )
+
+                            if ($directLicenseNameCollection.Count -gt 0) {
+                                $detailCollection += (
+                                    'Would remove direct license(s): {0}' -f
+                                    (
+                                        $directLicenseNameCollection -join ', '
+                                    )
+                                )
+                            }
+                        }
+
                         $taskResultDetailAssignedLicense = (
-                            $removeAssignedLicenseResult.Note -join '; '
+                            $detailCollection -join ' | '
                         )
 
                         $user.RemovedAssignedLicense = ''
