@@ -124,10 +124,21 @@ function Test-MLRSPListSchemaCompliance {
         $column = $columnLookup[$lookupKey]
 
         if (-not $column) {
+            # [PSCustomObject]@{
+            #     Column  = $expected.DisplayName
+            #     Status  = "Missing"
+            #     Details = "Column not found"
+            # }
             [PSCustomObject]@{
-                Column  = $expected.DisplayName
-                Status  = "Missing"
-                Details = "Column not found"
+                DisplayName  = $expected.DisplayName
+                InternalName = $column.Name
+                TypeExpected = $expected.Type
+                TypeActual   = ""
+                Required     = $expected.Required
+                Indexed      = $expected.Indexed
+                Unique       = $expected.Unique
+                Status       = "Missing"
+                Details      = "Column not found"
             }
             continue
         }
