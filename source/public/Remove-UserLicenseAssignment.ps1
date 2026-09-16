@@ -15,24 +15,47 @@ function Remove-MLRUserLicenseAssignment {
         $TestMode
     )
 
-    # If user exists and has license, remove them.
-    $params = @{
-        addLicenses    = @(
+    $result = [ordered]@{
+        Username         = $Username
+        SkuId            = @($SkuId)
+        Status           = ''
+        RemovedLicenseId = @()
+        Error             = @()
+        Note              = @()
+        TestMode          = [bool]$TestMode
+    }
 
+    $params = @{
+        addLicenses    = @()
+        removeLicenses = @($SkuId)
+    }
+
+    if ($TestMode) {
+        $result.Status = 'Simulated'
+        $result.Note = @(
+            'Test mode. No direct license assignments were removed.'
         )
-        removeLicenses = @(
-            $skuid
-        )
+
+        return [PSCustomObject]$result
     }
 
     try {
-        if (-not $TestMode) {
-            $null = Set-MgUserLicense -UserId $Username -BodyParameter $params -ErrorAction Stop
-        }
-        return "Successful"
+        $null = Set-MgUserLicense `
+            -UserId $Username `
+            -BodyParameter $params `
+            -ErrorAction Stop
+
+        $result.Status = 'Successful'
+        $result.RemovedLicenseId = @($SkuId)
     }
     catch {
-        SayError $($_.Exception.Message)
-        return "Failed - $($_.Exception.Message)"
+        SayError $_.Exception.Message
+
+        $result.Status = 'Failed'
+        $result.Error = @(
+            $_.Exception.Message
+        )
     }
+
+    return [PSCustomObject]$result
 }

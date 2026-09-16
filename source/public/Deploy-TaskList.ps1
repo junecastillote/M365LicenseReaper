@@ -62,6 +62,13 @@ function Deploy-MLRTaskList {
                 indexed      = $true
             }
             @{
+                name     = 'PostOperationStatus'
+                text     = @{
+                    AllowMultipleLines = $false
+                }
+                required = $false
+            }
+            @{
                 name     = "Completed Date"
                 datetime = @{
                     displayAs = "standard"

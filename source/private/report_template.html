@@ -12,15 +12,14 @@
     h3 {
       margin: 0;
     }
-
-    table {
+    .report-table {
       border-collapse: collapse;
       border: 1px solid #dddddd;
       width: 100%;
     }
 
-    th,
-    td {
+    .report-table th,
+    .report-table td {
       border: 1px solid #dddddd;
       padding: 5px;
       text-align: left;
@@ -36,20 +35,75 @@
       text-decoration: underline;
     }
 
-    /* Status column styles */
-    .pending {
-      background-color: #d6eaf8;
-      color: #1f77c5;
+    /* Nested result table */
+
+    .result-table {
+      border-collapse: collapse;
+      border: none;
+      width: 100%;
     }
 
-    .completed {
-      background-color: #d5f5e3;
-      color: #1d8348;
+    .result-table th,
+    .result-table td {
+      border: none;
+      padding: 3px 5px;
+      vertical-align: middle;
     }
 
-    .canceled {
-      background-color: #fdebd0;
-      color: #af601a;
+    .result-label {
+      color: #595959;
+      font-weight: bold;
+      white-space: nowrap;
+      width: 1%;
+    }
+
+    /* Status presentation */
+    .status-success {
+      background-color: #e2f0d9;
+      color: #375623;
+      font-weight: bold;
+    }
+
+    .status-warning {
+      background-color: #fff2cc;
+      color: #8a5a00;
+      font-weight: bold;
+    }
+
+    .status-failed {
+      background-color: #fce4d6;
+      color: #9c0006;
+      font-weight: bold;
+    }
+
+    .status-pending {
+      background-color: #ddebf7;
+      color: #1f4e78;
+      font-weight: bold;
+    }
+
+    .status-simulated {
+      background-color: #e4dfec;
+      color: #5f497a;
+      font-weight: bold;
+    }
+
+    .status-neutral {
+      background-color: #f2f2f2;
+      color: #595959;
+      font-weight: bold;
+    }
+
+    .detail-section,
+    .license-section {
+      margin: 0;
+      padding: 0;
+    }
+
+    .detail-separator {
+      font-size: 4px;
+      line-height: 4px;
+      height: 4px;
     }
   </style>
 </head>
@@ -58,13 +112,13 @@
   <h2>vOrganization</h2>
   <h3>vReportTitle</h3>
   <hr />
-  <table style="border-collapse: collapse; border: 1px solid #dddddd">
+  <table class="report-table">
     <tr>
       <th>Ticket</th>
       <th>Username</th>
-      <th>Result</th>
-      <th>Details</th>
-      <th>Removed License List</th>
+      <th>Task and Outcome</th>
+      <th>Operation Details</th>
+      <th>License Results</th>
       <th>Created Date</th>
       <th>Due Date</th>
       <th>Completed Date</th>
@@ -73,7 +127,7 @@
     vTableRows
   </table>
   <hr />
-  <table style="border-collapse: collapse; border: 1px solid #dddddd">
+  <table class="report-table">
     <tr>
     <tr>
       <td><b>Host: </b>vComputerName</td>
