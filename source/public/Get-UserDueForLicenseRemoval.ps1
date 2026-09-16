@@ -19,9 +19,10 @@ function Get-MLRUserDueForLicenseRemoval {
     $Global:mlrTaskList = Test-MLRTaskList -SiteUrl $SiteUrl -List $List
 
     if ($Global:mlrTaskList.Status -ne 'Passed') {
-        SayError "[$($MyInvocation.MyCommand.Name)]: SharePoint Site, List, Columns validation failed."
-        SayError "[$($MyInvocation.MyCommand.Name)]:   > $($Global:mlrTaskList.Issues)"
-        return $null
+        # SayError "[$($MyInvocation.MyCommand.Name)]: SharePoint Site, List, Columns validation failed."
+        # SayError "[$($MyInvocation.MyCommand.Name)]:   > $($Global:mlrTaskList.Issues)"
+        # return $null
+        throw "[$($MyInvocation.MyCommand.Name)]: SharePoint Site, List, Columns validation failed. $($Global:mlrTaskList.Issues)"
     }
     else {
         $site = $Global:mlrTaskList.Site
