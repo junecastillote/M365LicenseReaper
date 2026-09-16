@@ -600,6 +600,17 @@ function Invoke-MLRUserLicenseRemoval {
                         }
 
                         if (
+                            $removeInheritedLicenseResult.SimulatedLicenseName.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                'Would remove license(s): {0}' -f
+                                (
+                                    $removeInheritedLicenseResult.SimulatedLicenseName -join ', '
+                                )
+                            )
+                        }
+
+                        if (
                             $removeInheritedLicenseResult.SkippedGroupNotes.Count -gt 0
                         ) {
                             $detailCollection += (
