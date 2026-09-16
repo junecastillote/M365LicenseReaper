@@ -18,100 +18,170 @@ function Remove-MLRUserLicenseInherited {
         $ForceRefreshGroupCache
     )
 
-    $LicenseGroupId = $LicenseGroupId | Select-Object -Unique
+    $LicenseGroupId = @(
+        $LicenseGroupId |
+        Select-Object -Unique
+    )
 
-    # $groupProperties = @('id', 'assignedLicenses', 'displayname')
-    New-GBLCache -ForceRefreshGroupCache:$ForceRefreshGroupCache
+    New-GBLCache `
+        -ForceRefreshGroupCache:$ForceRefreshGroupCache
 
-    $errors = @()
-    $removedLicense = @()
-    $removedLicenseName = @()
     $removedGroup = @()
     $removedGroupName = @()
-    $errorGroup = @()
-    $errorGroupName = @()
+
+    $simulatedGroup = @()
+    $simulatedGroupName = @()
+
     $skippedGroup = @()
     $skippedGroupName = @()
-    $groupNameCollection = @()
-    $notes = @()
     $skippedGroupNotes = @()
 
-    foreach ($groupId in $LicenseGroupId) {
-        $groupName = $((Get-GroupFromCache $groupId).DisplayName)
-        $isMember = $null
-        try {
-            # Check if user is a member
-            $isMember = Get-MgGroupMemberAsUser -GroupId $groupId -Filter "id eq '$($UserId)'" -ErrorAction SilentlyContinue
+    $errorGroup = @()
+    $errorGroupName = @()
+    $errors = @()
 
-            # Remove if member
+    $groupNameCollection = @()
+    $removedLicense = @()
+    $removedLicenseName = @()
+    $notes = @()
+
+    foreach ($groupId in $LicenseGroupId) {
+        $group = Get-GroupFromCache -Id $groupId
+
+        if ($group) {
+            $groupName = $group.DisplayName
+        }
+        else {
+            $groupName = $groupId.ToString()
+        }
+
+        $groupNameCollection += $groupName
+
+        try {
+            $isMember = Get-MgGroupMemberAsUser `
+                -GroupId $groupId `
+                -Filter "id eq '$($UserId)'" `
+                -ErrorAction Stop
+
             if ($isMember) {
-                if (-not $TestMode) {
-                    Remove-MgGroupMemberByRef -DirectoryObjectId $UserId -GroupId $groupId -ErrorAction Stop
+                if ($TestMode) {
+                    $simulatedGroup += $groupId
+                    $simulatedGroupName += $groupName
                 }
-                $removedGroup += $groupId
+                else {
+                    Remove-MgGroupMemberByRef `
+                        -DirectoryObjectId $UserId `
+                        -GroupId $groupId `
+                        -ErrorAction Stop
+
+                    $removedGroup += $groupId
+                    $removedGroupName += $groupName
+                }
             }
             else {
-                Write-Debug "[$UserId] is not a member of [$($groupName)]"
+                Write-Debug "[$UserId] is not a member of [$groupName]"
+
                 $skippedGroup += $groupId
-                # $notes += "Not a member of [$($groupName)]"
-                $skippedGroupNotes += "Not a member of [$($groupName)]"
+                $skippedGroupName += $groupName
+                $skippedGroupNotes += "Not a member of [$groupName]"
             }
         }
         catch {
-            SayError "$($groupName) - $($_.Exception.Message)"
-            $errors += "$($groupName) - $($_.Exception.Message)"
+            $errorMessage = "$groupName - $($_.Exception.Message)"
+
+            SayError $errorMessage
+
+            $errors += $errorMessage
             $errorGroup += $groupId
+            $errorGroupName += $groupName
         }
     }
 
-    if ($TestMode) { $notes += 'Test mode. No changes.' }
+    if ($TestMode) {
+        $notes += 'Test mode. No group memberships were removed.'
+    }
 
-    $groupNameCollection += (($LicenseGroupId | ForEach-Object { Get-GroupFromCache $_ }).DisplayName)
+    if ($removedGroup.Count -gt 0) {
+        foreach ($groupId in $removedGroup) {
+            $group = Get-GroupFromCache -Id $groupId
 
-    if ($removedGroup) {
-        $removedGroupName += (($removedGroup | ForEach-Object { Get-GroupFromCache $_ }).DisplayName)
-        $removedLicense = $(
-            foreach ($group in $removedGroup) {
-                ($Global:mlrGroupCache | Where-Object { $_.id -eq $group }).AssignedLicenses.SkuId
+            if ($group) {
+                $removedLicense += @(
+                    $group.AssignedLicenses.SkuId
+                )
             }
-        )
+        }
 
-        $removedLicenseName += (Get-LicenseNameFromCache $removedLicense -Debug:$false)
-    }
-
-    if ($skippedGroup) {
-        $skippedGroupName += (($skippedGroup | ForEach-Object { Get-GroupFromCache $_ }).DisplayName)
-    }
-    if ($errorGroup) {
-        $errorGroupName += (($errorGroup | ForEach-Object { Get-GroupFromCache $_ }).DisplayName)
-    }
-
-    [pscustomobject]([ordered]@{
-            UserId             = $UserId
-            GroupId            = $LicenseGroupId
-            GroupName          = $groupNameCollection
-            RemovedGroupId     = $removedGroup
-            RemovedGroupName   = $removedGroupName
-            RemovedLicenseId   = $removedLicense
-            RemovedLicenseName = $removedLicenseName
-            SkippedGroupId     = $skippedGroup
-            SkippedGroupName   = $skippedGroupName
-            SkippedGroupNotes  = $skippedGroupNotes
-            ErrorGroup         = $errorGroup
-            ErrorGroupName     = $errorGroupName
-            Error              = $errors
-            Note               = $notes
-            TestMode           = $TestMode
-            Status             = $(
-                if ($errorGroup -or $errors) {
-                    'Failed'
-                }
-                elseif ($removedGroup.Count -lt 1 -and $skippedGroup.Count -gt 0) {
-                    'Skipped'
-                }
-                else {
-                    'Successful'
-                }
+        if ($removedLicense.Count -gt 0) {
+            $removedLicense = @(
+                $removedLicense |
+                Select-Object -Unique
             )
+
+            $removedLicenseName = @(
+                Get-LicenseNameFromCache `
+                    -SkuId $removedLicense `
+                    -Debug:$false
+            )
+        }
+    }
+
+    $satisfiedGroupCount =
+    $removedGroup.Count +
+    $skippedGroup.Count
+
+    $status = if (
+        $TestMode -and
+        $simulatedGroup.Count -gt 0
+    ) {
+        'Simulated'
+    }
+    elseif (
+        $errorGroup.Count -gt 0 -and
+        $satisfiedGroupCount -gt 0
+    ) {
+        'PartiallySuccessful'
+    }
+    elseif (
+        $errorGroup.Count -gt 0 -and
+        $satisfiedGroupCount -eq 0
+    ) {
+        'Failed'
+    }
+    elseif (
+        $removedGroup.Count -eq 0 -and
+        $skippedGroup.Count -gt 0
+    ) {
+        'AlreadySatisfied'
+    }
+    else {
+        'Successful'
+    }
+
+    return [PSCustomObject]([ordered]@{
+            UserId             = $UserId
+            GroupId            = @($LicenseGroupId)
+            GroupName          = @($groupNameCollection)
+
+            Status             = $status
+
+            RemovedGroupId     = @($removedGroup)
+            RemovedGroupName   = @($removedGroupName)
+            RemovedLicenseId   = @($removedLicense)
+            RemovedLicenseName = @($removedLicenseName)
+
+            SimulatedGroupId   = @($simulatedGroup)
+            SimulatedGroupName = @($simulatedGroupName)
+
+            SkippedGroupId     = @($skippedGroup)
+            SkippedGroupName   = @($skippedGroupName)
+            SkippedGroupNotes  = @($skippedGroupNotes)
+
+            ErrorGroupId       = @($errorGroup)
+            ErrorGroupName     = @($errorGroupName)
+            Error              = @($errors)
+
+            Note               = @($notes)
+            TestMode           = [bool]$TestMode
         })
 }

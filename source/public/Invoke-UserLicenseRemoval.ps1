@@ -49,7 +49,6 @@ function Invoke-MLRUserLicenseRemoval {
         [bool]
         $IncludeInheritedLicense = $true,
 
-        # Parameter help description
         [Parameter()]
         [switch]
         $TestMode
@@ -218,6 +217,29 @@ function Invoke-MLRUserLicenseRemoval {
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name InheritedLicense -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name InheritedLicenseName -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskAction -Value ''
+    $usersForLicenseRemoval |
+    Add-Member `
+        -MemberType NoteProperty `
+        -Name DirectOperationStatus `
+        -Value 'NotApplicable'
+
+    $usersForLicenseRemoval |
+    Add-Member `
+        -MemberType NoteProperty `
+        -Name InheritedOperationStatus `
+        -Value 'NotApplicable'
+
+    $usersForLicenseRemoval |
+    Add-Member `
+        -MemberType NoteProperty `
+        -Name PostOperationStatus `
+        -Value ''
+
+    $usersForLicenseRemoval |
+    Add-Member `
+        -MemberType NoteProperty `
+        -Name TaskStatusPostOp `
+        -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusAssignedLicensePostop -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskStatusInheritedLicensePostop -Value ''
     $usersForLicenseRemoval | Add-Member -MemberType NoteProperty -Name TaskResultAssignedLicense -Value ''
@@ -231,6 +253,12 @@ function Invoke-MLRUserLicenseRemoval {
 
     $lastMessageColumnName = ($Global:mlrTaskList.Columns.Columns | Where-Object { $_.DisplayName -eq 'Last Message' }).InternalName
     $completedDateColumnName = ($Global:mlrTaskList.Columns.Columns | Where-Object { $_.DisplayName -eq 'Completed Date' }).InternalName
+    $postOperationStatusColumnName = (
+        $Global:mlrTaskList.Columns.Columns |
+        Where-Object {
+            $_.DisplayName -eq 'PostOperationStatus'
+        }
+    ).InternalName
 
     $counter = 1
     $total = $usersForLicenseRemoval.Count
@@ -238,142 +266,589 @@ function Invoke-MLRUserLicenseRemoval {
 
         SayInfo "[$($MyInvocation.MyCommand.Name)]: Processing [$($counter)/$($total)] - Ticket: $($user.TaskTicket), Username: $($user.TaskUsername)"
 
-        # Initialize vars
-        $taskStatusAssignedLicensePostop = ''
+        # --------------------------------------------------
+        # Initialize operation results
+        # --------------------------------------------------
+
+        $directOperationStatus = 'NotApplicable'
+        $inheritedOperationStatus = 'NotApplicable'
+        $postOperationStatus = ''
+        $taskStatusPostOp = $user.TaskStatusPreOp
+
         $taskResultAssignedLicense = ''
-        $taskResultDetailAssignedLicense = ''
-        $taskStatusInheritedLicensePostop = ''
         $taskResultInheritedLicense = ''
+
+        $taskResultDetailAssignedLicense = ''
         $taskResultDetailInheritedLicense = ''
+
         $completedDate = $null
 
-        $removeAssignedLicenseResult = ''
-        $removeInheritedLicenseResult = ''
-        # $readinessState = $null
+        $removeAssignedLicenseResult = $null
+        $removeInheritedLicenseResult = $null
 
-        # Get the user account's readiness state for license removal
-        $readinessState = Get-MLRUserAccountState -Username $user.TaskUsername -SkipIfEnabled:$SkipIfEnabled -IncludeInheritedLicense:$IncludeInheritedLicense
+        # --------------------------------------------------
+        # Determine readiness
+        # --------------------------------------------------
+
+        $readinessState = Get-MLRUserAccountState `
+            -Username $user.TaskUsername `
+            -SkipIfEnabled:$SkipIfEnabled `
+            -IncludeInheritedLicense:$IncludeInheritedLicense
 
         $user.TaskAction = $readinessState.Action
+
         $user.AssignedLicense = $readinessState.AssignedLicense
         $user.AssignedLicenseName = $readinessState.AssignedLicenseName
 
-        # If readiness action state is 'Cancel'
+        $user.InheritedLicense = $readinessState.InheritedLicense
+        $user.InheritedLicenseName = $readinessState.InheritedLicenseName
+
+        # --------------------------------------------------
+        # Readiness: no action required
+        # --------------------------------------------------
+
         if ($readinessState.Action -eq 'Cancel') {
-            $taskStatusAssignedLicensePostop = 'Canceled'
-            $taskResultAssignedLicense = "Completed - No action"
-            # $taskResultDetail = $($readinessState.ReadinessNote)
-            $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            $directOperationStatus = 'NotApplicable'
+            $inheritedOperationStatus = 'NotApplicable'
+
+            $postOperationStatus = 'NoActionRequired'
+            $taskStatusPostOp = 'Canceled'
+
+            $taskResultAssignedLicense = 'Completed - No action'
+            $taskResultDetailAssignedLicense = $readinessState.ReadinessNote
+
+            if (-not $TestMode) {
+                $completedDate = (
+                    Get-Date
+                ).ToUniversalTime().ToString(
+                    'yyyy-MM-ddTHH:mm:ssZ'
+                )
+            }
         }
 
-        # If readiness action state is 'Skip'
-        if ($readinessState.Action -eq 'Skip') {
-            $taskStatusAssignedLicensePostop = 'Pending'
+        # --------------------------------------------------
+        # Readiness: temporarily deferred
+        # --------------------------------------------------
+
+        elseif ($readinessState.Action -eq 'Skip') {
+            $directOperationStatus = 'NotApplicable'
+            $inheritedOperationStatus = 'NotApplicable'
+
+            $postOperationStatus = 'Deferred'
+            $taskStatusPostOp = 'Pending'
 
             switch ($readinessState.ActionReason) {
-                'Error' { $taskResultAssignedLicense = 'Skipped - Error' }
-                'Account enabled' { $taskResultAssignedLicense = 'Skipped - Not allowed' }
-                default { $taskResultAssignedLicense = 'Skipped' }
+                'Error' {
+                    $taskResultAssignedLicense = 'Skipped - Error'
+                }
+
+                'Account enabled' {
+                    $taskResultAssignedLicense = 'Skipped - Not allowed'
+                }
+
+                default {
+                    $taskResultAssignedLicense = 'Skipped'
+                }
             }
 
-            # $taskResultDetail = $($readinessState.ReadinessNote)
+            $taskResultDetailAssignedLicense = $readinessState.ReadinessNote
             $completedDate = $null
         }
 
-        # If readiness action state is 'Remove'
-        if ($readinessState.Action -eq 'Remove') {
+        # --------------------------------------------------
+        # Readiness: perform license removal
+        # --------------------------------------------------
+
+        elseif ($readinessState.Action -eq 'Remove') {
+
+            # ----------------------------------------------
+            # Direct license removal
+            # ----------------------------------------------
+
             if ($readinessState.AssignedLicense) {
-                $removeAssignedLicenseResult = Remove-MLRUserLicenseAssignment -Username $user.TaskUsername -SkuId ($readinessState.AssignedLicense -split ",") -TestMode:$TestMode
-                if ($removeAssignedLicenseResult -eq 'Successful') {
-                    $taskStatusAssignedLicensePostop = 'Completed'
-                    $taskResultAssignedLicense = "Completed - Direct license removed"
-                    $taskResultDetailAssignedLicense = "Direct license removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
-                    $user.RemovedAssignedLicense = $readinessState.AssignedLicense
-                    $user.RemovedAssignedLicenseName = $readinessState.AssignedLicenseName
-                    $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
-                }
-                else {
-                    $taskStatusAssignedLicensePostop = $readinessState.TaskStatusPreOp
-                    $taskResultAssignedLicense = "Failed - Error"
-                    $taskResultDetailAssignedLicense = $removeAssignedLicenseResult -replace "Failed - ", ""
-                    $user.RemovedAssignedLicense = ""
-                    $user.RemovedAssignedLicenseName = ""
-                    $completedDate = $null
+                $directSkuId = @(
+                    $readinessState.AssignedLicense -split ',' |
+                    Where-Object {
+                        -not[string]::IsNullOrWhiteSpace($_)
+                    }
+                )
+
+                $removeAssignedLicenseResult =
+                Remove-MLRUserLicenseAssignment `
+                    -Username $user.TaskUsername `
+                    -SkuId $directSkuId `
+                    -TestMode:$TestMode
+
+                $directOperationStatus =
+                $removeAssignedLicenseResult.Status
+
+                switch ($directOperationStatus) {
+                    'Successful' {
+                        $taskResultAssignedLicense =
+                        'Completed - Direct license removed'
+
+                        $taskResultDetailAssignedLicense =
+                        "Direct license removed on $(Get-Date -Format 'yyyy-MM-dd hh:mm:ss tt') ($tzOffsetString)"
+
+                        $user.RemovedAssignedLicense = (
+                            $removeAssignedLicenseResult.RemovedLicenseId -join ','
+                        )
+
+                        $user.RemovedAssignedLicenseName =
+                        $readinessState.AssignedLicenseName
+                    }
+
+                    'Simulated' {
+                        $taskResultAssignedLicense =
+                        'Simulated - Direct license removal'
+
+                        $taskResultDetailAssignedLicense = (
+                            $removeAssignedLicenseResult.Note -join '; '
+                        )
+
+                        $user.RemovedAssignedLicense = ''
+                        $user.RemovedAssignedLicenseName = ''
+                    }
+
+                    'Failed' {
+                        $taskResultAssignedLicense =
+                        'Failed - Direct license removal'
+
+                        $taskResultDetailAssignedLicense = (
+                            $removeAssignedLicenseResult.Error -join '; '
+                        )
+
+                        $user.RemovedAssignedLicense = ''
+                        $user.RemovedAssignedLicenseName = ''
+                    }
+
+                    default {
+                        $taskResultAssignedLicense =
+                        "Failed - Unexpected direct operation status [$directOperationStatus]"
+
+                        $taskResultDetailAssignedLicense =
+                        'The direct-removal function returned an unsupported status.'
+
+                        $directOperationStatus = 'Failed'
+
+                        $user.RemovedAssignedLicense = ''
+                        $user.RemovedAssignedLicenseName = ''
+                    }
                 }
             }
-            if ($IncludeInheritedLicense -and $readinessState.InheritedLicense) {
-                $user.InheritedLicense = $readinessState.InheritedLicense -join ","
-                $user.InheritedLicenseName = $readinessState.InheritedLicenseName -join ","
-                $licenseIds = $readinessState.LicenseGroup -split ","
-                $removeInheritedLicenseResult = Remove-MLRUserLicenseInherited -UserId $readinessState.UserId -LicenseGroupId $licenseIds -TestMode:$TestMode
-                if ($removeInheritedLicenseResult.Status -eq 'Successful') {
-                    $taskStatusInheritedLicensePostop = 'Completed'
-                    $taskResultInheritedLicense = "Completed - Inherited license removed"
-                    $taskResultDetailInheritedLicense = "Inherited license removed on $(Get-Date -Format "yyyy-MM-dd hh:mm:ss tt") ($tzOffsetString)"
-                    $user.RemovedInheritedLicense = $removeInheritedLicenseResult.RemovedLicenseId -join ","
-                    $user.RemovedInheritedLicenseName = $removeInheritedLicenseResult.RemovedLicenseName -join ","
-                    $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            else {
+                $directOperationStatus = 'NotApplicable'
+
+                $taskResultAssignedLicense =
+                'Not applicable - No direct license assignment'
+            }
+
+            # ----------------------------------------------
+            # Inherited license removal
+            # ----------------------------------------------
+
+            if (
+                $IncludeInheritedLicense -and
+                $readinessState.InheritedLicense
+            ) {
+                $licenseGroupIds = @(
+                    $readinessState.LicenseGroup -split ',' |
+                    Where-Object {
+                        -not[string]::IsNullOrWhiteSpace($_)
+                    }
+                )
+
+                $removeInheritedLicenseResult =
+                Remove-MLRUserLicenseInherited `
+                    -UserId $readinessState.UserId `
+                    -LicenseGroupId $licenseGroupIds `
+                    -TestMode:$TestMode
+
+                $inheritedOperationStatus =
+                $removeInheritedLicenseResult.Status
+
+                switch ($inheritedOperationStatus) {
+                    'Successful' {
+                        $taskResultInheritedLicense =
+                        'Completed - Inherited license removed'
+
+                        $detailCollection = @()
+
+                        if (
+                            $removeInheritedLicenseResult.RemovedGroupName.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                'Removed membership from group(s): {0}' -f
+                                (
+                                    $removeInheritedLicenseResult.RemovedGroupName -join ', '
+                                )
+                            )
+                        }
+
+                        if (
+                            $removeInheritedLicenseResult.SkippedGroupNotes.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                $removeInheritedLicenseResult.SkippedGroupNotes -join '; '
+                            )
+                        }
+
+                        $detailCollection += (
+                            "Inherited license removal completed on $(Get-Date -Format 'yyyy-MM-dd hh:mm:ss tt') ($tzOffsetString)"
+                        )
+
+                        $taskResultDetailInheritedLicense = (
+                            $detailCollection -join ' | '
+                        )
+
+                        $user.RemovedInheritedLicense = (
+                            $removeInheritedLicenseResult.RemovedLicenseId -join ','
+                        )
+
+                        $user.RemovedInheritedLicenseName = (
+                            $removeInheritedLicenseResult.RemovedLicenseName -join ','
+                        )
+                    }
+
+                    'AlreadySatisfied' {
+                        $taskResultInheritedLicense =
+                        'Completed - Membership already absent'
+
+                        $taskResultDetailInheritedLicense = (
+                            $removeInheritedLicenseResult.SkippedGroupNotes -join '; '
+                        )
+
+                        $user.RemovedInheritedLicense = ''
+                        $user.RemovedInheritedLicenseName = ''
+                    }
+
+                    'PartiallySuccessful' {
+                        $taskResultInheritedLicense =
+                        'Partially completed - Inherited license removal'
+
+                        $detailCollection = @()
+
+                        if (
+                            $removeInheritedLicenseResult.RemovedGroupName.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                'Removed from group(s): {0}' -f
+                                (
+                                    $removeInheritedLicenseResult.RemovedGroupName -join ', '
+                                )
+                            )
+                        }
+
+                        if (
+                            $removeInheritedLicenseResult.SkippedGroupNotes.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                $removeInheritedLicenseResult.SkippedGroupNotes -join '; '
+                            )
+                        }
+
+                        if (
+                            $removeInheritedLicenseResult.Error.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                'Error(s): {0}' -f
+                                (
+                                    $removeInheritedLicenseResult.Error -join '; '
+                                )
+                            )
+                        }
+
+                        $taskResultDetailInheritedLicense = (
+                            $detailCollection -join ' | '
+                        )
+
+                        $user.RemovedInheritedLicense = (
+                            $removeInheritedLicenseResult.RemovedLicenseId -join ','
+                        )
+
+                        $user.RemovedInheritedLicenseName = (
+                            $removeInheritedLicenseResult.RemovedLicenseName -join ','
+                        )
+                    }
+
+                    'Simulated' {
+                        $taskResultInheritedLicense =
+                        'Simulated - Inherited license removal'
+
+                        $detailCollection = @(
+                            $removeInheritedLicenseResult.Note
+                        )
+
+                        if (
+                            $removeInheritedLicenseResult.SimulatedGroupName.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                'Would remove membership from group(s): {0}' -f
+                                (
+                                    $removeInheritedLicenseResult.SimulatedGroupName -join ', '
+                                )
+                            )
+                        }
+
+                        if (
+                            $removeInheritedLicenseResult.SkippedGroupNotes.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                $removeInheritedLicenseResult.SkippedGroupNotes -join '; '
+                            )
+                        }
+
+                        if (
+                            $removeInheritedLicenseResult.Error.Count -gt 0
+                        ) {
+                            $detailCollection += (
+                                'Validation error(s): {0}' -f
+                                (
+                                    $removeInheritedLicenseResult.Error -join '; '
+                                )
+                            )
+                        }
+
+                        $taskResultDetailInheritedLicense = (
+                            $detailCollection -join ' | '
+                        )
+
+                        $user.RemovedInheritedLicense = ''
+                        $user.RemovedInheritedLicenseName = ''
+                    }
+
+                    'Failed' {
+                        $taskResultInheritedLicense =
+                        'Failed - Inherited license removal'
+
+                        $taskResultDetailInheritedLicense = (
+                            $removeInheritedLicenseResult.Error -join '; '
+                        )
+
+                        $user.RemovedInheritedLicense = ''
+                        $user.RemovedInheritedLicenseName = ''
+                    }
+
+                    default {
+                        $taskResultInheritedLicense =
+                        "Failed - Unexpected inherited operation status [$inheritedOperationStatus]"
+
+                        $taskResultDetailInheritedLicense =
+                        'The inherited-removal function returned an unsupported status.'
+
+                        $inheritedOperationStatus = 'Failed'
+
+                        $user.RemovedInheritedLicense = ''
+                        $user.RemovedInheritedLicenseName = ''
+                    }
                 }
-                elseif ($removeInheritedLicenseResult.Status -eq 'Skipped') {
-                    $taskStatusInheritedLicensePostop = 'Completed'
-                    $taskResultInheritedLicense = "Completed - Skipped (see details)"
-                    $taskResultDetailInheritedLicense = ($removeInheritedLicenseResult.SkippedGroupNotes -join ",")
-                    $user.RemovedInheritedLicense = ""
-                    $user.RemovedInheritedLicenseName = ""
-                    $completedDate = (Get-Date).ToUniversalTime().ToString('yyyy-MM-ddTHH:mm:ssZ')
+            }
+            else {
+                $inheritedOperationStatus = 'NotApplicable'
+
+                if (-not $IncludeInheritedLicense) {
+                    $taskResultInheritedLicense =
+                    'Not applicable - Inherited license processing disabled'
                 }
                 else {
-                    # $taskStatusInheritedLicensePostop = $removeInheritedLicenseResult.Status
-                    $taskStatusInheritedLicensePostop = $readinessState.TaskStatusPreOp
-                    $taskResultInheritedLicense = "Failed - (see details)"
-                    $taskResultDetailInheritedLicense = ($removeInheritedLicenseResult.Error -join ",")
-                    $user.RemovedInheritedLicense = ""
-                    $user.RemovedInheritedLicenseName = ""
+                    $taskResultInheritedLicense =
+                    'Not applicable - No inherited license assignment'
+                }
+            }
+
+            # ----------------------------------------------
+            # Aggregate both independent operation results
+            # ----------------------------------------------
+
+            $postOperationStatus =
+            Resolve-MLRPostOperationStatus `
+                -DirectOperationStatus $directOperationStatus `
+                -InheritedOperationStatus $inheritedOperationStatus
+
+            switch ($postOperationStatus) {
+                'Successful' {
+                    $taskStatusPostOp = 'Completed'
+
+                    if (-not $TestMode) {
+                        $completedDate = (
+                            Get-Date
+                        ).ToUniversalTime().ToString(
+                            'yyyy-MM-ddTHH:mm:ssZ'
+                        )
+                    }
+                }
+
+                'NoActionRequired' {
+                    $taskStatusPostOp = 'Canceled'
+
+                    if (-not $TestMode) {
+                        $completedDate = (
+                            Get-Date
+                        ).ToUniversalTime().ToString(
+                            'yyyy-MM-ddTHH:mm:ssZ'
+                        )
+                    }
+                }
+
+                'PartiallySuccessful' {
+                    $taskStatusPostOp = 'Pending'
+                    $completedDate = $null
+                }
+
+                'Failed' {
+                    $taskStatusPostOp = 'Pending'
+                    $completedDate = $null
+                }
+
+                'Simulated' {
+                    $taskStatusPostOp = 'Pending'
+                    $completedDate = $null
+                }
+
+                default {
+                    $postOperationStatus = 'Failed'
+                    $taskStatusPostOp = 'Pending'
                     $completedDate = $null
                 }
             }
         }
 
-        try {
-            <#
-            - As of 2025-09-07, Update-MgSiteListItem and Update-MgSiteListItemField cannot update a DATE field to null value.
-            - Reference - https://github.com/microsoftgraph/msgraph-sdk-powershell/issues/2724
-            - Microsoft closed the issue without it being resolved.
-            - As a workaround, used Invoke-MgGraphRequest to update the fields.
-            #>
+        # --------------------------------------------------
+        # Store results on the returned task object
+        # --------------------------------------------------
 
+        $user.DirectOperationStatus =
+        $directOperationStatus
+
+        $user.InheritedOperationStatus =
+        $inheritedOperationStatus
+
+        $user.PostOperationStatus =
+        $postOperationStatus
+
+        $user.TaskStatusPostOp =
+        $taskStatusPostOp
+
+        $user.TaskStatusAssignedLicensePostop =
+        $directOperationStatus
+
+        $user.TaskStatusInheritedLicensePostop =
+        $inheritedOperationStatus
+
+        $user.TaskResultAssignedLicense =
+        $taskResultAssignedLicense
+
+        $user.TaskResultInheritedLicense =
+        $taskResultInheritedLicense
+
+        $user.TaskResultDetailAssignedLicense =
+        $taskResultDetailAssignedLicense
+
+        $user.TaskResultDetailInheritedLicense =
+        $taskResultDetailInheritedLicense
+
+        if ($null -ne $completedDate) {
+            $user.TaskCompletedDate = Get-Date $completedDate
+        }
+        else {
+            $user.TaskCompletedDate = $null
+        }
+
+        # --------------------------------------------------
+        # Build combined operational detail
+        # --------------------------------------------------
+
+        $postOperationDetailCollection = @()
+
+        if (
+            -not[string]::IsNullOrWhiteSpace(
+                $taskResultDetailAssignedLicense
+            )
+        ) {
+            $postOperationDetailCollection += (
+                'Direct: {0}' -f
+                $taskResultDetailAssignedLicense
+            )
+        }
+
+        if (
+            -not[string]::IsNullOrWhiteSpace(
+                $taskResultDetailInheritedLicense
+            )
+        ) {
+            $postOperationDetailCollection += (
+                'Inherited: {0}' -f
+                $taskResultDetailInheritedLicense
+            )
+        }
+
+        if ($postOperationDetailCollection.Count -gt 0) {
+            $postOperationDetail = (
+                $postOperationDetailCollection -join ' | '
+            )
+        }
+        else {
+            $postOperationDetail = $readinessState.ReadinessNote
+        }
+
+        # --------------------------------------------------
+        # Update SharePoint task
+        # --------------------------------------------------
+
+        try {
             $fields = @{
                 fields = @{
-                    "Status"                      = $taskStatusAssignedLicensePostop
-                    "Notes"                       = $taskResultDetailAssignedLicense
-                    "$($completedDateColumnName)" = $completedDate
-                    "$($lastMessageColumnName)"   = $taskResultDetailAssignedLicense
+                    'Status'                         = $taskStatusPostOp
+
+                    "$postOperationStatusColumnName" =
+                    $postOperationStatus
+
+                    'Notes'                          =
+                    $postOperationDetail
+
+                    "$completedDateColumnName"       =
+                    $completedDate
+
+                    "$lastMessageColumnName"         =
+                    $postOperationDetail
                 }
             }
 
             Write-Debug "Updating SPO List item for $($user.TaskUsername)"
+
             if (-not $TestMode) {
                 $null = Invoke-MgGraphRequest `
                     -Method PATCH `
                     -Uri "https://graph.microsoft.com/v1.0/sites/$($user.TaskSiteId)/lists/$($user.TaskListId)/items/$($user.TaskListItemId)" `
                     -Body $fields `
-                    -ContentType "application/json" `
+                    -ContentType 'application/json' `
                     -ErrorAction Stop
             }
-            $user.TaskResultAssignedLicense = $taskResultAssignedLicense
-            $user.TaskResultDetailAssignedLicense = $(if ($readinessState.Action -ne 'Remove') { $readinessState.ReadinessNote } else { $taskResultDetailAssignedLicense })
-            $user.TaskStatusAssignedLicensePostop = $taskStatusAssignedLicensePostop
-            $user.TaskStatusInheritedLicensePostop = $taskStatusInheritedLicensePostop
-            $user.TaskResultInheritedLicense = $TaskResultInheritedLicense
-            $user.TaskResultDetailInheritedLicense = $taskResultDetailInheritedLicense
-            $user.TaskCompletedDate = $(if ($null -ne $completedDate) { (Get-Date $completedDate) })
         }
         catch {
             SayError $_.Exception.Message
-            $user.TaskResultAssignedLicense = 'Failed - Error'
-            $user.TaskResultDetailAssignedLicense = $_.Exception.Message
-            $user.TaskStatusAssignedLicensePostop = $readinessState.TaskStatusPreOp
+
+            $sharePointUpdateError = $_.Exception.Message
+
+            $user.PostOperationStatus = 'Failed'
+            $user.TaskStatusPostOp = $user.TaskStatusPreOp
             $user.TaskCompletedDate = $null
+
+            if (
+                [string]::IsNullOrWhiteSpace(
+                    $user.TaskResultDetailAssignedLicense
+                )
+            ) {
+                $user.TaskResultDetailAssignedLicense =
+                "SharePoint task update failed: $sharePointUpdateError"
+            }
+            else {
+                $user.TaskResultDetailAssignedLicense = (
+                    '{0} | SharePoint task update failed: {1}' -f
+                    $user.TaskResultDetailAssignedLicense,
+                    $sharePointUpdateError
+                )
+            }
         }
         $counter++
     }
@@ -414,7 +889,6 @@ function Invoke-MLRUserLicenseRemoval {
             Send-MgUserMail -UserId $SendReportToEmailRecipient.From -BodyParameter $mailBody -ErrorAction Stop
         }
         catch {
-            # SayError "[$($MyInvocation.MyCommand.Name)]: Send email failed: $($_.Exception.Message)"
             throw "Send email failed: $($_.Exception.Message)"
         }
     }

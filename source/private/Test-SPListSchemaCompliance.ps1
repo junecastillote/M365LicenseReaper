@@ -58,6 +58,13 @@ function Test-MLRSPListSchemaCompliance {
             Default     = "Pending"
         },
         @{
+            DisplayName = 'PostOperationStatus'
+            Type        = 'Text'
+            Required    = $false
+            Indexed     = $false
+            Unique      = $false
+        }
+        @{
             DisplayName = "Completed Date"
             Type        = "DateTime"
             Required    = $false
