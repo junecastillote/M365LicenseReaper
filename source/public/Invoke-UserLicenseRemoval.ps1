@@ -51,7 +51,11 @@ function Invoke-MLRUserLicenseRemoval {
 
         [Parameter()]
         [switch]
-        $TestMode
+        $TestMode,
+
+        [Parameter()]
+        [switch]
+        $PauseBeforeProcessingRemoval
     )
 
     $module = ThisModule
@@ -262,6 +266,11 @@ function Invoke-MLRUserLicenseRemoval {
 
     $counter = 1
     $total = $usersForLicenseRemoval.Count
+
+    if ($PauseBeforeProcessingRemoval) {
+        Read-Host -Prompt "Paused. Press any key to continue."
+    }
+
     foreach ($user in $usersForLicenseRemoval) {
 
         SayInfo "[$($MyInvocation.MyCommand.Name)]: Processing [$($counter)/$($total)] - Ticket: $($user.TaskTicket), Username: $($user.TaskUsername)"
@@ -872,7 +881,6 @@ function Invoke-MLRUserLicenseRemoval {
         }
         else {
             $htmlContent | Out-File $htmlFileName -Encoding utf8 -Force -Confirm:$false -ErrorAction Stop
-            # $usersForLicenseRemoval | Export-Csv -Path $csvFileName -NoTypeInformation -Encoding utf8 -Force -Confirm:$false
             SayInfo "[$($MyInvocation.MyCommand.Name)]: HTML report file saved to $($htmlFileName)."
         }
     }
