@@ -36,12 +36,18 @@
       text-decoration: underline;
     }
 
+    /* Task and outcome column */
+
+    .result-column {
+      width: 220px;
+    }
+
     /* Nested result table */
 
     .result-table {
       border-collapse: collapse;
       border: none;
-      width: 100%;
+      width: auto;
     }
 
     .result-table th,
@@ -106,6 +112,13 @@
       line-height: 4px;
       height: 4px;
     }
+
+    .detail-section ul,
+    .license-section ul {
+      margin-top: 4px;
+      margin-bottom: 4px;
+      padding-left: 22px;
+    }
   </style>
 </head>
 
@@ -117,7 +130,7 @@
     <tr>
       <th>Ticket</th>
       <th>Username</th>
-      <th>Task and Outcome</th>
+      <th class="result-column" width="220">Task and Outcome</th>
       <th>Operation Details</th>
       <th>License Results</th>
       <th>Created Date</th>
