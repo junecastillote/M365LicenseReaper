@@ -172,6 +172,18 @@ function Write-MLRHtmlReport {
     }
 
     # --------------------------------------------------
+    # Local helper: convert PascalCase/camelCase → human-readable text
+    # Example: NotApplicable → Not Applicable, GetHTTPResponseCode → Get HTTP Response Code
+    # --------------------------------------------------
+
+    function ConvertTo-SpacedString {
+        param([string] $String)
+
+        $String -creplace '([a-z0-9])([A-Z])', '$1 $2' `
+            -creplace '([A-Z])([A-Z][a-z])', '$1 $2'
+    }
+
+    # --------------------------------------------------
     # Initialize report information
     # --------------------------------------------------
 
@@ -438,9 +450,6 @@ function Write-MLRHtmlReport {
                 $lineItem.TaskResultDetailAssignedLicense
             )
         ) {
-            # $directDetailHtml = ConvertTo-MLRHtmlEncodedText `
-            #     -Value $lineItem.TaskResultDetailAssignedLicense
-
             $detailList = (($lineItem.TaskResultDetailAssignedLicense).Split('|').Trim() |
                 ForEach-Object {
                     "<li>$(ConvertTo-MLRHtmlEncodedText -Value $_)</li>"
@@ -448,9 +457,15 @@ function Write-MLRHtmlReport {
 
             $directDetailHtml = "<ul>$($detailList -join "`n")</ul>"
 
-            $htmlRowCollection += (
-                '<div class="detail-section"><strong>Direct assignment:</strong><br>{0}</div>' -f
-                $directDetailHtml
+            $htmlRowCollection += $(
+                if ($lineItem.TaskAction -eq 'Remove' ) {
+                    '<div class="detail-section"><strong>Direct assignment:</strong><br>{0}</div>' -f
+                    $directDetailHtml
+                }
+                else {
+                    '<div class="detail-section"><strong>' + (ConvertTo-SpacedString $lineItem.DirectOperationStatus) + ':</strong><br>{0}</div>' -f
+                    $directDetailHtml
+                }
             )
 
             $detailSectionCount++
@@ -461,9 +476,6 @@ function Write-MLRHtmlReport {
                 $lineItem.TaskResultDetailInheritedLicense
             )
         ) {
-            # $inheritedDetailHtml = ConvertTo-MLRHtmlEncodedText `
-            #     -Value $lineItem.TaskResultDetailInheritedLicense
-
             $detailList = (($lineItem.TaskResultDetailInheritedLicense).Split('|').Trim() |
                 ForEach-Object {
                     "<li>$(ConvertTo-MLRHtmlEncodedText -Value $_)</li>"
