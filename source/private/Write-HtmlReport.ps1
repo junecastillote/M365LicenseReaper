@@ -250,10 +250,18 @@ function Write-MLRHtmlReport {
         # Result
         # ----------------------------------------------
 
-        $htmlRowCollection += '<td>'
+        # $htmlRowCollection += '<td>'
+
+        # $htmlRowCollection += (
+        #     '<table class="result-table" role="presentation" cellpadding="0" cellspacing="0" border="0">'
+        # )
 
         $htmlRowCollection += (
-            '<table class="result-table" role="presentation" cellpadding="0" cellspacing="0" border="0">'
+            '<td class="result-column" width="220" style="width:220px;">'
+        )
+
+        $htmlRowCollection += (
+            '<table class="result-table" role="presentation" width="210" cellpadding="0" cellspacing="0" border="0" style="width:210px;border-collapse:collapse;">'
         )
 
         # Task lifecycle status
@@ -430,8 +438,15 @@ function Write-MLRHtmlReport {
                 $lineItem.TaskResultDetailAssignedLicense
             )
         ) {
-            $directDetailHtml = ConvertTo-MLRHtmlEncodedText `
-                -Value $lineItem.TaskResultDetailAssignedLicense
+            # $directDetailHtml = ConvertTo-MLRHtmlEncodedText `
+            #     -Value $lineItem.TaskResultDetailAssignedLicense
+
+            $detailList = (($lineItem.TaskResultDetailAssignedLicense).Split('|').Trim() |
+                ForEach-Object {
+                    "<li>$(ConvertTo-MLRHtmlEncodedText -Value $_)</li>"
+                })
+
+            $directDetailHtml = "<ul>$($detailList -join "`n")</ul>"
 
             $htmlRowCollection += (
                 '<div class="detail-section"><strong>Direct assignment:</strong><br>{0}</div>' -f
@@ -446,8 +461,15 @@ function Write-MLRHtmlReport {
                 $lineItem.TaskResultDetailInheritedLicense
             )
         ) {
-            $inheritedDetailHtml = ConvertTo-MLRHtmlEncodedText `
-                -Value $lineItem.TaskResultDetailInheritedLicense
+            # $inheritedDetailHtml = ConvertTo-MLRHtmlEncodedText `
+            #     -Value $lineItem.TaskResultDetailInheritedLicense
+
+            $detailList = (($lineItem.TaskResultDetailInheritedLicense).Split('|').Trim() |
+                ForEach-Object {
+                    "<li>$(ConvertTo-MLRHtmlEncodedText -Value $_)</li>"
+                })
+
+            $inheritedDetailHtml = "<ul>$($detailList -join "`n")</ul>"
 
             if ($detailSectionCount -gt 0) {
                 $htmlRowCollection += (
@@ -492,15 +514,16 @@ function Write-MLRHtmlReport {
             $directLicenseHtmlCollection = @(
                 $directLicenseNameCollection |
                 ForEach-Object {
-                    ConvertTo-MLRHtmlEncodedText `
-                        -Value $_.Trim()
+                    # ConvertTo-MLRHtmlEncodedText -Value $_.Trim()
+                    "<li>$(ConvertTo-MLRHtmlEncodedText -Value $_.Trim())</li>"
                 }
             )
 
             $htmlRowCollection += (
                 '<div class="license-section"><strong>Direct assignment removed:</strong><br>{0}</div>' -f
                 (
-                    $directLicenseHtmlCollection -join ';<br>'
+                    # $directLicenseHtmlCollection -join ';<br>'
+                    "<ul>$($directLicenseHtmlCollection -join "`n")</ul>"
                 )
             )
 
@@ -522,8 +545,8 @@ function Write-MLRHtmlReport {
             $inheritedLicenseHtmlCollection = @(
                 $inheritedLicenseNameCollection |
                 ForEach-Object {
-                    ConvertTo-MLRHtmlEncodedText `
-                        -Value $_.Trim()
+                    # ConvertTo-MLRHtmlEncodedText -Value $_.Trim()
+                    "<li>$(ConvertTo-MLRHtmlEncodedText -Value $_.Trim())</li>"
                 }
             )
 
@@ -536,7 +559,8 @@ function Write-MLRHtmlReport {
             $htmlRowCollection += (
                 '<div class="license-section"><strong>Group assignment removed:</strong><br>{0}</div>' -f
                 (
-                    $inheritedLicenseHtmlCollection -join ';<br>'
+                    # $inheritedLicenseHtmlCollection -join ';<br>'
+                    "<ul>$($inheritedLicenseHtmlCollection -join "`n")</ul>"
                 )
             )
 
