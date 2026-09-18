@@ -6,7 +6,8 @@ function Deploy-MLRTaskList {
         [String]
         $SiteUrl,
 
-        [Parameter()]
+        [Parameter(Mandatory)]
+        [Alias('ListName')]
         [String]
         $List
     )
@@ -17,7 +18,7 @@ function Deploy-MLRTaskList {
         return $null
     }
 
-    if (-not $List) { $List = 'M365 License Reaper Schedule' }
+    # if (-not $List) { $List = 'M365 License Reaper Schedule' }
 
     $spList = Get-MLRSiteListByName -SiteURL $SiteUrl -List $List
 
