@@ -7,6 +7,7 @@ function Test-MLRTaskList {
         $SiteUrl,
 
         [Parameter(Mandatory)]
+        [Alias('ListName')]
         [ValidateNotNullOrEmpty()]
         [String]
         $List
