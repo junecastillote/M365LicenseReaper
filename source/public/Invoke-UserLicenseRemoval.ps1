@@ -7,6 +7,7 @@ function Invoke-MLRUserLicenseRemoval {
         $SiteUrl,
 
         [Parameter(Mandatory)]
+        [Alias('ListName')]
         [ValidateNotNullOrEmpty()]
         [String]
         $List,
