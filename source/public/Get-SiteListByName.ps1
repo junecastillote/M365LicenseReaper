@@ -6,6 +6,7 @@ function Get-MLRSiteListByName {
         $SiteURL,
 
         [Parameter(Mandatory)]
+        [Alias('ListName')]
         [string]
         $List
     )

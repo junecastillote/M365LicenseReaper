@@ -7,6 +7,7 @@ function Get-MLRUserDueForLicenseRemoval {
         $SiteUrl,
 
         [Parameter(Mandatory)]
+        [Alias('ListName')]
         [ValidateNotNullOrEmpty()]
         [String]
         $List
